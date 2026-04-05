@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Production
+dist/
+build/
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/.env
+
+# Diagnostic and temp files
+full_error.json
+models_list.json
+models_names.txt
+output.txt
+debug-ai.mjs
+find-model.mjs
+full-path-check.mjs
+list-models.mjs
+simple-list.mjs
+test-ai.mjs
+v1-check.mjs
+
+# Vite logic
+.vite/
