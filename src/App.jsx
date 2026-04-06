@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
-import RightPanel from './components/RightPanel';
 import Dashboard from './components/Dashboard';
 import AIAssistant from './components/AIAssistant';
 import AIAssistantPage from './components/AIAssistantPage';
@@ -74,7 +73,6 @@ const App = () => {
         </main>
       </div>
 
-      <RightPanel />
       <AIAssistant isOpen={isAiOpen} toggleOpen={() => setIsAiOpen(!isAiOpen)} />
     </div>
   );
