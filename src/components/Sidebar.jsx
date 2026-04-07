@@ -164,8 +164,21 @@ const Sidebar = ({ isCollapsed, toggleCollapse, onNavigate, activeView, onOpenAi
 
         <NavigationGroup title="Manage" isCollapsed={isCollapsed}>
           <SidebarItem icon={FolderOpen} label="Verified Documents" isCollapsed={isCollapsed} active={activeView === 'verified-documents'} onClick={() => onNavigate('verified-documents')} />
-          <SidebarItem icon={ClipboardList} label="Applications" isCollapsed={isCollapsed} />
-          <SidebarItem icon={Bell} label="Notifications" badge="3" isCollapsed={isCollapsed} />
+          <SidebarItem 
+            icon={ClipboardList} 
+            label="Applications" 
+            isCollapsed={isCollapsed} 
+            active={activeView === 'applications'}
+            onClick={() => onNavigate('applications')}
+          />
+          <SidebarItem 
+            icon={Bell} 
+            label="Notifications" 
+            badge="3" 
+            isCollapsed={isCollapsed} 
+            active={activeView === 'notifications'}
+            onClick={() => onNavigate('notifications')}
+          />
         </NavigationGroup>
 
         <NavigationGroup title="Account" isCollapsed={isCollapsed}>

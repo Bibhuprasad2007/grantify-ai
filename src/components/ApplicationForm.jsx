@@ -10,7 +10,7 @@ import html2canvas from 'html2canvas';
 
 // Firebase Imports
 import { db, storage } from '../firebase';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useUser } from '../context/UserContext';
 
@@ -463,14 +463,22 @@ const ApplicationForm = ({ onBackToDashboard }) => {
     
     setIsSubmitting(true);
     try {
-      const basePath = `scholarshipApplications/${user.uid}`;
-      const photoUrl = await uploadFile(files.profilePhoto, `${basePath}/profile.jpg`);
-      const marksheetUrl = await uploadFile(files.marksheet, `${basePath}/marksheet.pdf`);
-      const certificateUrl = await uploadFile(files.certificate, `${basePath}/certificate.pdf`);
-      const passbookUrl = await uploadFile(files.passbook, `${basePath}/passbook.pdf`);
-
+      // 1. Submit the main form data immediately so it shows in District Panel
       await saveToFirestore("Submitted", 3);
+      
+      const basePath = `scholarshipApplications/${user.uid}`;
+      
+      // 2. Handle file uploads (only if files are selected)
+      const uploadPromises = [
+        files.profilePhoto ? uploadFile(files.profilePhoto, `${basePath}/profile.jpg`) : Promise.resolve(null),
+        files.marksheet ? uploadFile(files.marksheet, `${basePath}/marksheet.pdf`) : Promise.resolve(null),
+        files.certificate ? uploadFile(files.certificate, `${basePath}/certificate.pdf`) : Promise.resolve(null),
+        files.passbook ? uploadFile(files.passbook, `${basePath}/passbook.pdf`) : Promise.resolve(null)
+      ];
 
+      const [photoUrl, marksheetUrl, certificateUrl, passbookUrl] = await Promise.all(uploadPromises);
+
+      // 3. Update document with URLs if any files were uploaded
       const fileUrls = {};
       if (photoUrl) fileUrls['personalInfo.photoUrl'] = photoUrl;
       if (marksheetUrl) fileUrls['academicInfo.marksheetUrl'] = marksheetUrl;
@@ -478,16 +486,13 @@ const ApplicationForm = ({ onBackToDashboard }) => {
       if (passbookUrl) fileUrls['bankInfo.passbookUrl'] = passbookUrl;
 
       if (Object.keys(fileUrls).length > 0) {
-        await setDoc(doc(db, "scholarshipApplications", user.uid), fileUrls, { merge: true });
+        await updateDoc(doc(db, "scholarshipApplications", user.uid), fileUrls);
       }
 
-      // Final confirmation to ensure data is visible in District Panel
-      console.log("Scholarship Application submitted for Aadhaar/UID:", user.uid);
-      
       setIsSuccess(true);
     } catch (error) {
       console.error("Submission Error:", error);
-      alert("Error submitting. Check console.");
+      alert("Submission Error: " + error.message);
     } finally {
       setIsSubmitting(false);
     }

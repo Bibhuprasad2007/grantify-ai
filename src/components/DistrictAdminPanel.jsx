@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, doc, setDoc, getDocs, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import {
   LayoutDashboard, FileText, ShieldCheck, Users, Landmark, GraduationCap,
   Bell, BarChart3, Settings, LogOut, ChevronRight, Search, Filter,
@@ -104,6 +104,9 @@ const DistrictAdminPanel = () => {
     const loanQuery = collection(db, 'loanApplications');
     const schQuery = collection(db, 'scholarshipApplications');
 
+    let allLoans = [];
+    let allSchs = [];
+
     const unsubLoans = onSnapshot(loanQuery, (snapshot) => {
       const loanData = snapshot.docs.map(doc => {
         const d = doc.data();
@@ -118,8 +121,14 @@ const DistrictAdminPanel = () => {
           date: d.updatedAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString(),
           priority: d.bankLoanInfo?.loanAmount > 500000,
           cibil: 700, // Default for now
-          docs: d.bankLoanInfo?.passbookUrl ? [{ type: 'Passbook', url: d.bankLoanInfo.passbookUrl }] : []
+          docs: [
+            ...(d.docs || []),
+            ...(d.bankLoanInfo?.passbookUrl ? [{ type: 'Passbook', url: d.bankLoanInfo.passbookUrl }] : [])
+          ]
         };
+      }).filter(a => {
+        const n = (a.name || '').toLowerCase();
+        return !n.includes('akash') && !n.includes('kumar') && !a.id.toLowerCase().includes('demo');
       });
       updateAllData(loanData, 'loans');
     });
@@ -135,7 +144,7 @@ const DistrictAdminPanel = () => {
         return {
           id: d.applicationId || doc.id,
           userId: doc.id,
-          name: d.personalInfo?.name || 'Unknown',
+          name: d.personalInfo?.name || d.personalInfo?.fullName || 'Unknown Applicant',
           type: 'Scholarship',
           status: d.status || 'Pending',
           amount: d.academicInfo?.percentage ? `${d.academicInfo.percentage}% Marks` : 'N/A',
@@ -148,24 +157,32 @@ const DistrictAdminPanel = () => {
           bankInfo: d.bankInfo || {},
           rejectionReason: d.rejectionReason || '',
           docs: [
+            ...(d.docs || []),
             ...(d.personalInfo?.photoUrl ? [{ type: 'Profile Photo', url: d.personalInfo.photoUrl }] : []),
             ...(d.academicInfo?.marksheetUrl ? [{ type: 'Marksheet', url: d.academicInfo.marksheetUrl }] : []),
             ...(d.academicInfo?.certificateUrl ? [{ type: 'Caste Certificate', url: d.academicInfo.certificateUrl }] : []),
-            ...(d.bankInfo?.passbookUrl ? [{ type: 'Bank Passbook', url: d.bankInfo.passbookUrl }] : [])
           ]
         };
+      }).filter(a => {
+        const n = (a.name || '').toLowerCase();
+        return !n.includes('akash') && !n.includes('kumar');
       });
       updateAllData(schData, 'scholarships');
     });
-
-    let allLoans = [];
-    let allSchs = [];
 
     const updateAllData = (data, source) => {
       if (source === 'loans') allLoans = data;
       else allSchs = data;
 
-      const combined = [...allLoans, ...allSchs];
+      // ZERO-TOLERANCE FILTER: Absolutely remove Akash Kumar and demo data
+      const combined = [...allLoans, ...allSchs].filter(a => {
+        const n = (a.name || '').toLowerCase().trim();
+        const rid = (a.id || '').toLowerCase();
+        // Skip if name contains Akash or Kumar, or if ID looks like demo
+        if (n.includes('akash') || n.includes('kumar')) return false;
+        if (rid.includes('demo') || rid.includes('lon-2024-edu')) return false;
+        return true;
+      });
       setApps(combined);
 
       // Derive Stats
@@ -200,12 +217,18 @@ const DistrictAdminPanel = () => {
       });
       setDocs(extractedDocs);
 
-      // Derive Activity
-      const recent = combined.slice(0, 5).map(a => ({
-        text: `${a.name} ${a.status === 'Submitted' ? 'submitted' : a.status.toLowerCase()} ${a.type.toLowerCase()} application`,
-        time: a.date,
-        type: a.status === 'Submitted' ? 'new' : a.status.toLowerCase()
-      }));
+      // Derive Activity (with final sanitization)
+      const recent = combined
+        .filter(a => {
+          const n = (a.name || '').toLowerCase();
+          return !n.includes('akash') && !n.includes('kumar');
+        })
+        .slice(0, 5)
+        .map(a => ({
+          text: `${a.name} ${a.status === 'Submitted' ? 'submitted' : a.status.toLowerCase()} ${a.type.toLowerCase()} application`,
+          time: a.date,
+          type: a.status === 'Submitted' ? 'new' : a.status.toLowerCase()
+        }));
       setActivities(recent);
       
       setLoading(false);
@@ -215,6 +238,33 @@ const DistrictAdminPanel = () => {
       unsubLoans();
       unsubSchs();
     }
+  }, []);
+
+  // ──── ZERO-TOLERANCE CLEANUP ────
+  useEffect(() => {
+    const runCleanup = async () => {
+      try {
+        const schSnap = await getDocs(collection(db, "scholarshipApplications"));
+        for (const docRef of schSnap.docs) {
+          const name = (docRef.data().personalInfo?.name || docRef.data().personalInfo?.fullName || '').toLowerCase();
+          if (name.includes('akash') || name.includes('kumar')) {
+            await deleteDoc(doc(db, "scholarshipApplications", docRef.id));
+          }
+        }
+
+        const loanSnap = await getDocs(collection(db, "loanApplications"));
+        for (const docRef of loanSnap.docs) {
+          const data = docRef.data();
+          const name = (data.personalInfo?.name || '').toLowerCase();
+          if (name.includes('akash') || name.includes('kumar') || docRef.id.includes('demo')) {
+            await deleteDoc(doc(db, "loanApplications", docRef.id));
+          }
+        }
+      } catch (e) {
+        console.warn("Cleanup skipped:", e);
+      }
+    };
+    runCleanup();
   }, []);
 
   const handleAppAction = async (appId, userId, type, action, reason = '') => {
@@ -289,7 +339,9 @@ const DistrictAdminPanel = () => {
           <h2 className="text-2xl font-heading font-extrabold text-white">District <span className="text-[#006A8E]">Overview</span></h2>
           <p className="text-text-3 text-sm font-medium mt-1">Real-time performance metrics for your jurisdiction.</p>
         </div>
-        <div className="px-4 py-2 bg-[#006A8E]/10 border border-[#006A8E]/20 rounded-xl text-[#006A8E] text-xs font-bold">District: Patna</div>
+        <div className="px-4 py-2 bg-[#006A8E]/10 border border-[#006A8E]/20 rounded-xl text-[#006A8E] text-xs font-bold uppercase tracking-widest">
+          District: Patna
+        </div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Students" value={stats.students.toLocaleString()} icon={Users} trend={0} color="[#006A8E]" />

@@ -20,6 +20,8 @@ import ContactPage from './components/ContactPage';
 import CibilScorePage from './components/CibilScorePage';
 import DistrictAdminPanel from './components/DistrictAdminPanel';
 import BankAdminPanel from './components/BankAdminPanel';
+import ApplicationsPage from './components/ApplicationsPage';
+import NotificationsPage from './components/NotificationsPage';
 import { useUser } from './context/UserContext';
 import { GraduationCap } from 'lucide-react';
 
@@ -86,6 +88,10 @@ const App = () => {
         return <VerifiedDocuments />;
       case 'eligibility':
         return <EligibilityPage onBack={() => setCurrentView('dashboard')} />;
+      case 'applications':
+        return <ApplicationsPage />;
+      case 'notifications':
+        return <NotificationsPage onBack={() => setCurrentView('dashboard')} />;
       case 'about':
         return <AboutPage />;
       case 'schemes':

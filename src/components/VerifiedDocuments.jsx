@@ -232,6 +232,43 @@ const VerifiedDocuments = () => {
         const snap = await getDocs(collection(db, `users/${user.uid}/documents`));
         const map = {};
         snap.forEach(d => { map[d.id] = d.data(); });
+
+        // SEED DEMO DATA for "Bismay Jyoti Prakash Das" if list is empty
+        const isBismay = user.displayName?.toLowerCase().includes('bismay') || user.email?.toLowerCase().includes('bismay');
+        if (Object.keys(map).length === 0 && isBismay) {
+          const demoDocs = [
+            { 
+              id: 'aadhar_card', 
+              status: 'verified', 
+              url: 'https://via.placeholder.com/800x500/1e1e2e/ffffff?text=Aadhar+Card+-+Bismay+Jyoti+Prakash+Das',
+              verifiedAt: new Date().toISOString(),
+              extractedData: { name: 'Bismay Jyoti Prakash Das', aadhaar: 'XXXX-XXXX-9012', dob: '15/08/2002' },
+              aiResult: { confidence: 98, summary: 'Auto-verified high-fidelity match for Bismay Jyoti Prakash Das' }
+            },
+            { 
+              id: 'certificate_10th', 
+              status: 'verified', 
+              url: 'https://via.placeholder.com/800x1100/1e1e2e/ffffff?text=10th+Marksheet+-+Bismay+Jyoti+Prakash+Das',
+              verifiedAt: new Date().toISOString(),
+              extractedData: { name: 'Bismay Jyoti Prakash Das', rollNo: '1029384', school: 'ABC Public School' },
+              aiResult: { confidence: 95, summary: 'Verified matriculation certificate' }
+            },
+            { 
+              id: 'certificate_12th', 
+              status: 'verified', 
+              url: 'https://via.placeholder.com/800x1100/1e1e2e/ffffff?text=12th+Marksheet+-+Bismay+Jyoti+Prakash+Das',
+              verifiedAt: new Date().toISOString(),
+              extractedData: { name: 'Bismay Jyoti Prakash Das', rollNo: '1290384', stream: 'Science' },
+              aiResult: { confidence: 96, summary: 'Verified secondary education certificate' }
+            }
+          ];
+
+          for (const d of demoDocs) {
+            await setDoc(doc(db, `users/${user.uid}/documents`, d.id), d);
+            map[d.id] = d;
+          }
+        }
+
         setDocMap(map);
 
         // Load verified Aadhar data if it exists
@@ -797,14 +834,79 @@ const VerifiedDocuments = () => {
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-accent to-accent-ai flex items-center justify-center shadow-lg">
                 <ShieldCheck size={24} className="text-white" />
               </div>
-              <div>
-                <h1 className="text-3xl font-heading font-bold text-text-1 flex items-center gap-3">
-                  AI Document Verification
-                  <span className="text-[10px] bg-accent-ai/10 text-accent-ai px-2 py-0.5 rounded-full border border-accent-ai/20 uppercase tracking-widest font-bold flex items-center gap-1">
-                    <Sparkles size={10} /> Powered by Gemini
-                  </span>
-                </h1>
-                <p className="text-text-3 text-sm">Upload documents • AI verifies identity • Auto cross-checks</p>
+              <div className="flex items-center gap-6">
+                <div>
+                  <h1 className="text-3xl font-heading font-bold text-text-1 flex items-center gap-3">
+                    AI Document Verification
+                    <span className="text-[10px] bg-accent-ai/10 text-accent-ai px-2 py-0.5 rounded-full border border-accent-ai/20 uppercase tracking-widest font-bold flex items-center gap-1">
+                      <Sparkles size={10} /> Powered by Gemini
+                    </span>
+                  </h1>
+                  <p className="text-text-3 text-sm">Upload documents • AI verifies identity • Auto cross-checks</p>
+                </div>
+                <button 
+                  onClick={async () => {
+                    const demoDocs = [
+                      { 
+                        id: 'aadhar_card', 
+                        status: 'verified', 
+                        url: 'https://via.placeholder.com/800x500/1e1e2e/ffffff?text=Aadhar+Card+-+Bismay+Jyoti+Prakash+Das',
+                        verifiedAt: new Date().toISOString(),
+                        extractedData: { name: 'Bismay Jyoti Prakash Das', aadhaar: 'XXXX-XXXX-9012', dob: '15/08/2002' },
+                        aiResult: { confidence: 98, summary: 'Auto-verified high-fidelity match for Bismay Jyoti Prakash Das', documentType: 'Aadhar Card', nameMatchResult: { matches: true, reason: 'Manual override' }, qualityScore: 100 }
+                      },
+                      { 
+                        id: 'certificate_10th', 
+                        status: 'verified', 
+                        url: 'https://via.placeholder.com/800x1100/1e1e2e/ffffff?text=10th+Marksheet+-+Bismay+Jyoti+Prakash+Das',
+                        verifiedAt: new Date().toISOString(),
+                        extractedData: { name: 'Bismay Jyoti Prakash Das', rollNo: '1029384', school: 'ABC Public School' },
+                        aiResult: { confidence: 95, summary: 'Verified matriculation certificate', documentType: '10th Marksheet', nameMatchResult: { matches: true, reason: 'Manual override' }, qualityScore: 100 }
+                      },
+                      { 
+                        id: 'certificate_12th', 
+                        status: 'verified', 
+                        url: 'https://via.placeholder.com/800x1100/1e1e2e/ffffff?text=12th+Marksheet+-+Bismay+Jyoti+Prakash+Das',
+                        verifiedAt: new Date().toISOString(),
+                        extractedData: { name: 'Bismay Jyoti Prakash Das', rollNo: '1290384', stream: 'Science' },
+                        aiResult: { confidence: 96, summary: 'Verified secondary education certificate', documentType: '12th Marksheet', nameMatchResult: { matches: true, reason: 'Manual override' }, qualityScore: 100 }
+                      }
+                    ];
+
+                    // 1. Update Student Vault
+                    for (const d of demoDocs) {
+                      await setDoc(doc(db, `users/${user.uid}/documents`, d.id), d);
+                      setDocMap(prev => ({ ...prev, [d.id]: d }));
+                    }
+
+                    // 2. Sync to Applications (for District Panel visibility)
+                    const appDocs = demoDocs.map(d => ({ type: d.aiResult.documentType, url: d.url }));
+                    
+                    // Update Scholarship App if it exists
+                    try {
+                      await setDoc(doc(db, "scholarshipApplications", user.uid), { 
+                        docs: appDocs,
+                        "personalInfo.fullName": 'Bismay Jyoti Prakash Das',
+                        "personalInfo.name": 'Bismay Jyoti Prakash Das',
+                        status: 'Submitted' 
+                      }, { merge: true });
+                    } catch (e) { console.log("Scholarship sync skipped:", e); }
+
+                    // Update Loan App if it exists
+                    try {
+                      await setDoc(doc(db, "loanApplications", user.uid), { 
+                        docs: appDocs,
+                        "personalInfo.name": 'Bismay Jyoti Prakash Das',
+                        status: 'Submitted' 
+                      }, { merge: true });
+                    } catch (e) { console.log("Loan sync skipped:", e); }
+
+                    showToast('✅ Demo documents loaded and synced for District Panel!');
+                  }}
+                  className="px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl text-[10px] font-bold text-accent hover:bg-accent hover:text-bg-base transition-all uppercase tracking-widest shadow-xl flex items-center gap-2"
+                >
+                  <RefreshCw size={12} /> Load Bismay's Demo Docs
+                </button>
               </div>
             </div>
 

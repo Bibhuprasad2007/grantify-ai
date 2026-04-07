@@ -1,9 +1,18 @@
-import React from 'react';
-import { Check, Info, AlertTriangle, AlertCircle, Sparkles, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Check, Info, AlertTriangle, AlertCircle, 
+  Sparkles, ChevronRight, GraduationCap, Landmark 
+} from 'lucide-react';
+import { db } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { useUser } from '../context/UserContext';
 
-const NotificationItem = ({ icon: Icon, color, title, time, isRead }) => {
+const NotificationItem = ({ icon: Icon, color, title, time, isRead, onClick }) => {
   return (
-    <div className={`p-4 rounded-xl cursor-not-allowed group hover:bg-white/5 transition-all flex items-start gap-4 border border-transparent hover:border-white/5 ${!isRead ? 'bg-accent/5 focus:bg-accent/10' : ''}`}>
+    <div 
+      onClick={onClick}
+      className={`p-4 rounded-xl cursor-pointer group hover:bg-white/5 transition-all flex items-start gap-4 border border-transparent hover:border-white/5 ${!isRead ? 'bg-accent/5' : ''}`}
+    >
       <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center bg-bg-base border border-border-default`}>
         <Icon size={18} className={color} />
       </div>
@@ -21,6 +30,44 @@ const NotificationItem = ({ icon: Icon, color, title, time, isRead }) => {
 };
 
 const NotificationDropdown = ({ onClose }) => {
+  const { user } = useUser();
+  const [realApps, setRealApps] = useState([]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Listen to Scholarship
+    const unsubSch = onSnapshot(doc(db, "scholarshipApplications", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.status === 'Submitted') {
+          setRealApps(prev => {
+            const others = prev.filter(a => a.id !== 'sch-apply');
+            return [{ id: 'sch-apply', type: 'Scholarship', status: 'Submitted', time: 'Recently' }, ...others];
+          });
+        }
+      }
+    });
+
+    // Listen to Loan
+    const unsubLoan = onSnapshot(doc(db, "loanApplications", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.status === 'Submitted') {
+          setRealApps(prev => {
+            const others = prev.filter(a => a.id !== 'loan-apply');
+            return [{ id: 'loan-apply', type: 'Loan', status: 'Submitted', time: 'Recently' }, ...others];
+          });
+        }
+      }
+    });
+
+    return () => {
+      unsubSch();
+      unsubLoan();
+    };
+  }, [user?.uid]);
+
   return (
     <div className="absolute right-0 top-14 w-[360px] max-h-[500px] flex flex-col rounded-2xl glass border border-white/10 shadow-2xl z-50 animate-fade-up overflow-hidden">
       {/* Header */}
@@ -33,7 +80,20 @@ const NotificationDropdown = ({ onClose }) => {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto p-2 custom-scrollbar space-y-1">
-        <p className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-text-3">Today</p>
+        {realApps.length > 0 && <p className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-text-3">Recent Updates</p>}
+        
+        {realApps.map(app => (
+          <NotificationItem 
+            key={app.id}
+            icon={app.type === 'Scholarship' ? GraduationCap : Landmark} 
+            color={app.type === 'Scholarship' ? "text-accent-ai" : "text-accent"} 
+            title={`${app.type} Applied Successfully`} 
+            time={app.time} 
+            isRead={false} 
+          />
+        ))}
+
+        <p className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-text-3">Demo History</p>
         <NotificationItem 
           icon={Check} 
           color="text-success" 
@@ -49,7 +109,7 @@ const NotificationDropdown = ({ onClose }) => {
           isRead={false} 
         />
         
-        <p className="px-3 pt-4 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-text-3">This Week</p>
+        <p className="px-3 pt-4 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-text-3">Earlier</p>
         <NotificationItem 
           icon={Info} 
           color="text-accent" 
@@ -60,15 +120,8 @@ const NotificationDropdown = ({ onClose }) => {
         <NotificationItem 
           icon={AlertCircle} 
           color="text-danger" 
-          title="Payment Plan Renewal Reminder" 
+          title="Profile Security Check" 
           time="5 days ago" 
-          isRead={true} 
-        />
-        <NotificationItem 
-          icon={AlertTriangle} 
-          color="text-warning" 
-          title="Update Profile Information" 
-          time="1 week ago" 
           isRead={true} 
         />
       </div>
