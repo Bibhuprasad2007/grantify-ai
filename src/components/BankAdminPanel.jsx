@@ -51,82 +51,44 @@ const BankAdminPanel = () => {
   // Fetch Live Data from Firestore
   React.useEffect(() => {
     const loansRef = collection(db, 'loanApplications');
-    const schRef = collection(db, 'scholarshipApplications');
+    const q = query(loansRef, orderBy('updatedAt', 'desc'));
 
-    const updateCombinedData = (loanDocs, schDocs) => {
-      const merged = [
-        ...loanDocs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            type: 'Loan',
-            collection: 'loanApplications',
-            name: data.personalInfo?.name || 'Unknown',
-            amount: data.bankLoanInfo?.loanAmount ? `₹${data.bankLoanInfo.loanAmount}` : 'N/A',
-            course: data.academicInfo?.courseName || 'N/A',
-            district: data.personalInfo?.district || 'Odisha',
-            status: data.status || 'Pending',
-            cibil: data.cibilScore || 720,
-            aiRisk: data.aiRisk || 'Low',
-            ...data
-          };
-        }),
-        ...schDocs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            type: 'Scholarship',
-            collection: 'scholarshipApplications',
-            name: data.personalInfo?.name || 'Unknown',
-            amount: data.scholarshipAmount ? `₹${data.scholarshipAmount}` : 'N/A',
-            course: data.academicInfo?.courseName || 'N/A',
-            district: data.personalInfo?.district || 'Odisha',
-            status: data.status || 'Pending',
-            cibil: 'N/A',
-            aiRisk: 'Low',
-            ...data
-          };
-        })
-      ].sort((a, b) => {
-        const dateA = a.updatedAt?.seconds || 0;
-        const dateB = b.updatedAt?.seconds || 0;
-        return dateB - dateA;
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loanData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          type: 'Loan',
+          collection: 'loanApplications',
+          name: data.personalInfo?.name || 'Unknown',
+          amount: data.bankLoanInfo?.loanAmount ? `₹${data.bankLoanInfo.loanAmount}` : 'N/A',
+          course: data.academicInfo?.courseName || 'N/A',
+          district: data.personalInfo?.district || 'Odisha',
+          status: data.status || 'Pending',
+          cibil: data.cibilScore || 720,
+          aiRisk: data.aiRisk || 'Low',
+          ...data
+        };
       });
 
-      setLoans(merged);
+      setLoans(loanData);
 
       // Calculate Real-time Stats
-      const pending = merged.filter(l => l.status === 'Pending').length;
-      const approved = merged.filter(l => l.status === 'Approved').length;
-      const rejected = merged.filter(l => l.status === 'Rejected').length;
+      const pending = loanData.filter(l => l.status === 'Pending').length;
+      const approved = loanData.filter(l => l.status === 'Approved').length;
+      const rejected = loanData.filter(l => l.status === 'Rejected').length;
 
       setStats({
-        requests: merged.length,
+        requests: loanData.length,
         pending,
         approved,
         rejected,
         disbursed: `₹${(approved * 5.2).toFixed(1)}L`,
       });
       setLoading(false);
-    };
-
-    let loanDocs = [];
-    let schDocs = [];
-
-    const unsubLoans = onSnapshot(loansRef, (snapshot) => {
-      loanDocs = snapshot.docs;
-      updateCombinedData(loanDocs, schDocs);
     });
 
-    const unsubSch = onSnapshot(schRef, (snapshot) => {
-      schDocs = snapshot.docs;
-      updateCombinedData(loanDocs, schDocs);
-    });
-
-    return () => {
-      unsubLoans();
-      unsubSch();
-    };
+    return () => unsubscribe();
   }, []);
 
   // Handle switching to a specific loan review
