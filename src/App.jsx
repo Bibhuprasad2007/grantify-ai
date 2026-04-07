@@ -7,6 +7,18 @@ import AIAssistantPage from './components/AIAssistantPage';
 import ApplicationForm from './components/ApplicationForm';
 import LoanForm from './components/LoanForm';
 import LoginPage from './components/LoginPage';
+import Profile from './components/Profile';
+import LoanOffersPage from './components/LoanOffersPage';
+import GovernmentAidPage from './components/GovernmentAidPage';
+import VerifiedDocuments from './components/VerifiedDocuments';
+import EligibilityPage from './components/EligibilityPage';
+import AboutPage from './components/AboutPage';
+import SchemesPage from './components/SchemesPage';
+import HowToApplyPage from './components/HowToApplyPage';
+import HelpPage from './components/HelpPage';
+import ContactPage from './components/ContactPage';
+import CibilScorePage from './components/CibilScorePage';
+import DistrictAdminPanel from './components/DistrictAdminPanel';
 import { useUser } from './context/UserContext';
 import { GraduationCap } from 'lucide-react';
 
@@ -36,6 +48,11 @@ const App = () => {
     return <LoginPage />;
   }
 
+  // District users get their own admin panel
+  if (user.role === 'district') {
+    return <DistrictAdminPanel />;
+  }
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -45,12 +62,34 @@ const App = () => {
             onApplyScholarship={() => setCurrentView('apply-scholarship')} 
           />
         );
+      case 'loan-offers':
+        return <LoanOffersPage onApplyLoan={() => setCurrentView('apply-loan')} />;
+      case 'government-aid':
+        return <GovernmentAidPage onApply={() => setCurrentView('apply-scholarship')} />;
       case 'apply-loan':
-        return <LoanForm onBackToDashboard={() => setCurrentView('dashboard')} />;
+        return <LoanForm onBackToDashboard={() => setCurrentView('dashboard')} onCheckCibil={() => setCurrentView('cibil-score')} />;
       case 'apply-scholarship':
         return <ApplicationForm onBackToDashboard={() => setCurrentView('dashboard')} />;
+      case 'cibil-score':
+        return <CibilScorePage onBack={() => setCurrentView('apply-loan')} />;
       case 'ai-assistant':
         return <AIAssistantPage />;
+      case 'profile':
+        return <Profile onBack={() => setCurrentView('dashboard')} />;
+      case 'verified-documents':
+        return <VerifiedDocuments />;
+      case 'eligibility':
+        return <EligibilityPage onBack={() => setCurrentView('dashboard')} />;
+      case 'about':
+        return <AboutPage />;
+      case 'schemes':
+        return <SchemesPage />;
+      case 'how-to-apply':
+        return <HowToApplyPage />;
+      case 'help':
+        return <HelpPage />;
+      case 'contact':
+        return <ContactPage />;
       default:
         return <Dashboard onApplyLoan={() => setCurrentView('apply-loan')} onApplyScholarship={() => setCurrentView('apply-scholarship')} />;
     }
@@ -67,7 +106,7 @@ const App = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {currentView !== 'ai-assistant' && <TopBar />}
+        {currentView !== 'ai-assistant' && <TopBar onNavigate={setCurrentView} />}
         <main className={`flex-1 overflow-x-hidden custom-scrollbar ${currentView === 'ai-assistant' ? 'overflow-y-hidden p-6' : 'overflow-y-auto p-6'}`}>
           {renderContent()}
         </main>

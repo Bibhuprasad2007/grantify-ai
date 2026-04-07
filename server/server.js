@@ -4,8 +4,12 @@ import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import admin from 'firebase-admin';
 import path from 'path';
+import Tesseract from 'tesseract.js';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -56,7 +60,227 @@ Core behavior:
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+
+// ============================================================
+// --- DOCUMENT VERIFICATION PROMPT ---
+// ============================================================
+const DOC_VERIFY_PROMPT = `You are a strict Indian document verification expert AI for an education loan & scholarship platform.
+
+## YOUR TASK
+Analyze the uploaded document image/PDF and extract identity information from it.
+
+## DOCUMENT TYPES YOU CAN VERIFY
+- Aadhar Card (UIDAI issued, 12-digit number)
+- PAN Card (10-character alphanumeric)
+- 10th Certificate / Marksheet
+- 12th Certificate / Marksheet
+- Income Certificate
+- Father's/Mother's Aadhar Card
+- Bank Passbook
+- College ID Card
+- Bonafide Certificate
+- Fee Structure
+- Ration Card
+- Passport Size Photo
+- Last Exam Marksheet
+- Account Info Sheet
+- IFSC Code Proof
+
+## EXTRACTION RULES
+1. Extract ALL readable text fields from the document.
+2. Identify the document type from the image.
+3. For identity documents (Aadhar, PAN, Certificates), extract: Full Name, Father's Name (if available), Date of Birth (if available), Document Number (if available).
+4. For Passport Photo: just confirm it is a valid passport-size photograph of a person.
+5. For bank documents: extract Account Holder Name, Account Number, IFSC (if visible).
+6. For academic documents: extract Student Name, Institution, Course, Year/Semester, Marks/Grade.
+
+## VALIDATION RULES
+- Check if the document appears genuine (not blurred, not cropped badly, readable).  
+- Check if the document type matches what the user claims it is (provided in "expectedDocType").
+- If a "referenceUserName" is provided, check if the name on the document reasonably matches it (allow minor variations like initials, middle name differences).
+- If "verifiedAadharData" is provided, cross-check the name/father's name with it to confirm same person.
+
+## OUTPUT FORMAT
+You MUST respond with ONLY valid JSON (no markdown, no backticks, no explanation). Use this exact structure:
+{
+  "verified": true or false,
+  "confidence": 0-100,
+  "documentType": "detected document type",
+  "extractedData": {
+    "name": "extracted full name or null",
+    "fatherName": "extracted father name or null",
+    "dob": "extracted date of birth or null",
+    "documentNumber": "extracted doc number or null",
+    "institution": "college/school name or null",
+    "course": "course or class name or null",
+    "accountNumber": "bank account or null",
+    "ifsc": "IFSC code or null",
+    "additionalFields": {}
+  },
+  "nameMatchResult": {
+    "matches": true or false,
+    "documentName": "name from document",
+    "referenceName": "name to compare with",
+    "reason": "brief explanation"
+  },
+  "crossCheckResult": {
+    "matches": true or false,
+    "reason": "comparison with previously verified Aadhar data"
+  },
+  "rejectionReasons": ["list of reasons if rejected, empty array if verified"],
+  "qualityScore": 0-100,
+  "summary": "one-line human-readable summary"
+}`;
+
+// ============================================================
+// --- DOCUMENT VERIFICATION ENDPOINT ---
+// ============================================================
+app.post('/api/verify-document', async (req, res) => {
+  try {
+    const { 
+      imageBase64,       // base64 encoded image data
+      mimeType,          // e.g. "image/jpeg", "image/png", "application/pdf"
+      expectedDocType,   // e.g. "Aadhar Card", "PAN Card"
+      referenceUserName, // user's display name from Google profile
+      referenceUserEmail,// user's email
+      userId,            // user's UID
+      verifiedAadharData // previously verified Aadhar data (if any)
+    } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+      return res.status(500).json({ 
+        error: 'API key not configured',
+        message: 'Gemini API key not set. Add it to server/.env'
+      });
+    }
+
+    // Build context for AI
+    let contextInstruction = `\n\n## VERIFICATION CONTEXT:\n`;
+    contextInstruction += `- Expected Document Type: ${expectedDocType || 'Unknown'}\n`;
+    contextInstruction += `- Reference User Name (from Google account): ${referenceUserName || 'Not provided'}\n`;
+    contextInstruction += `- Reference User Email: ${referenceUserEmail || 'Not provided'}\n`;
+    
+    if (verifiedAadharData) {
+      contextInstruction += `\n## PREVIOUSLY VERIFIED AADHAR DATA (use this for cross-checking):\n`;
+      contextInstruction += `- Verified Name: ${verifiedAadharData.name || 'N/A'}\n`;
+      contextInstruction += `- Father's Name: ${verifiedAadharData.fatherName || 'N/A'}\n`;
+      contextInstruction += `- DOB: ${verifiedAadharData.dob || 'N/A'}\n`;
+      contextInstruction += `- Aadhar Number: ${verifiedAadharData.documentNumber || 'N/A'}\n`;
+    } else {
+      contextInstruction += `\n## NOTE: No previously verified Aadhar data available. This may be the first document being verified. Compare name with Google profile name only.\n`;
+    }
+
+    // ---- OFFLINE TEXT EXTRACTION (Bypasses Gemini Vision Rate Limits) ----
+    let extractedRawText = "";
+    let usedLocalOcr = false;
+    const buffer = Buffer.from(imageBase64, 'base64');
+    
+    console.log(`🔍 Extracting text locally for ${expectedDocType}...`);
+    try {
+      if (mimeType === 'application/pdf') {
+        const pdfData = await pdfParse(buffer);
+        extractedRawText = pdfData.text || "";
+        usedLocalOcr = true;
+      } else {
+        const worker = await Tesseract.createWorker('eng');
+        const ret = await worker.recognize(buffer);
+        extractedRawText = ret.data.text || "";
+        await worker.terminate();
+        usedLocalOcr = true;
+      }
+      console.log(`✅ Local extraction complete. Text length: ${extractedRawText.length}`);
+    } catch (ocrErr) {
+      console.error('⚠️ Local OCR failed, falling back to AI Vision...', ocrErr.message);
+      usedLocalOcr = false;
+    }
+
+    // ---- TEXT ONLY AI VERIFICATION (More robust, virtually no rate limits) ----
+    let result;
+    if (usedLocalOcr && extractedRawText.trim().length > 10) {
+      // Fast text-only model (High Rate Limits)
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" }); 
+      console.log(`🤖 Using AI TEXT model logic for ${referenceUserName}...`);
+
+      const textPrompt = `You are a strict fintech document verifier.
+I have extracted the raw text from a user's uploaded document.
+Your job is to read this raw text, identify the document, verify the user's details, and return strict JSON output.
+
+${DOC_VERIFY_PROMPT}
+
+## RAW EXTRACTED TEXT FROM USER UPLOAD:
+"""
+${extractedRawText}
+"""
+${contextInstruction}
+`;
+      result = await model.generateContent(textPrompt);
+    } else {
+      // Fallback Vision AI if local Extraction fails or returns no text
+      console.log(`🤖 Using AI VISION model logic for ${referenceUserName} as fallback...`);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
+      result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: mimeType || 'image/jpeg',
+            data: imageBase64
+          }
+        },
+        { text: DOC_VERIFY_PROMPT + contextInstruction }
+      ]);
+    }
+
+    const responseText = result.response.text();
+    
+    // Parse AI response (clean up potential markdown formatting)
+    let aiResult;
+    try {
+      const cleanJson = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      aiResult = JSON.parse(cleanJson);
+    } catch (parseErr) {
+      console.error('AI response parse error:', parseErr);
+      console.error('Raw AI response:', responseText);
+      return res.status(500).json({ 
+        error: 'AI response parsing failed',
+        rawResponse: responseText
+      });
+    }
+
+    console.log(`📄 Document Verification: ${expectedDocType} → ${aiResult.verified ? '✅ VERIFIED' : '❌ REJECTED'} (${aiResult.confidence}% confidence)`);
+
+    res.json({
+      success: true,
+      result: aiResult
+    });
+
+  } catch (error) {
+    console.error('Document Verification Error:', error.message);
+    
+    if (error.message?.includes('quota') || error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+      // Extract retry delay if available
+      const retryMatch = error.message?.match(/retryDelay.*?(\d+)s/);
+      const waitTime = retryMatch ? retryMatch[1] : '30';
+      return res.status(429).json({ 
+        error: `Rate limit reached. Please wait ${waitTime} seconds and try again.`
+      });
+    }
+
+    if (error.message?.includes('not found') || error.message?.includes('404')) {
+      return res.status(500).json({ 
+        error: 'AI model not available. Please try again later.'
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Verification failed: ' + (error.message || 'Unknown error'),
+      details: error.message
+    });
+  }
+});
 
 // --- Fetch user context from Firestore ---
 async function getUserContext(userId) {

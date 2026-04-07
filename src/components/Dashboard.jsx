@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, setDoc } from 'firebase/firestore';
 
 const QuickAction = ({ icon: Icon, label, primary, ai, onClick }) => (
   <button 
@@ -199,72 +199,76 @@ const ScholarshipCard = ({ sponsor, name, org, amount, deadline, tags, match, ai
   </div>
 );
 
-const LoanCard = ({ bank, rate, maxAmount, tenure, popular, delay }) => (
-  <div className={`p-8 rounded-[2.5rem] glass relative group overflow-hidden border border-white/5 hover:border-white/20 transition-all duration-500 stagger-up-${delay}`}>
-    {popular && (
-      <div className="absolute top-0 right-10 py-1.5 px-6 bg-gradient-to-r from-accent to-accent-ai text-[10px] font-extrabold text-bg-base rounded-b-xl uppercase tracking-widest shadow-xl shadow-accent/20 z-10">
-        Most Popular
-      </div>
-    )}
+const LoanCard = ({ title, interestRate, maxAmount, tenure, approvalConfidence, aiTag, delay }) => {
+  const initials = title ? title.substring(0, 2).toUpperCase() : 'L';
+  const popular = approvalConfidence > 90;
+  
+  return (
+    <div className={`p-8 rounded-[2.5rem] glass relative group overflow-hidden border border-white/5 hover:border-white/20 transition-all duration-500 stagger-up-${delay}`}>
+      {popular && (
+        <div className="absolute top-0 right-10 py-1.5 px-6 bg-gradient-to-r from-accent to-accent-ai text-[10px] font-extrabold text-bg-base rounded-b-xl uppercase tracking-widest shadow-xl shadow-accent/20 z-10">
+          Most Popular
+        </div>
+      )}
 
-    <div className="flex justify-between items-start mb-8">
-      <div className="flex items-center gap-4">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-extrabold bg-bg-base border border-border-default ${bank.initialColor}`}>
-          {bank.initials}
+      <div className="flex justify-between items-start mb-8">
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-extrabold bg-bg-base border border-border-default text-accent`}>
+            {initials}
+          </div>
+          <div>
+            <h4 className="text-base font-bold text-text-1 group-hover:text-accent transition-colors">{title}</h4>
+            <div className="flex items-center gap-1 mt-1">
+              <span className="text-[10px] font-bold text-success uppercase tracking-widest">{aiTag}</span>
+              <span className="text-[10px] font-bold text-text-3 ml-2 tracking-tighter">({approvalConfidence}% Match)</span>
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-[.2em] mb-1">Fixed Rate</p>
+          <span className="text-3xl font-mono font-extrabold text-white">{interestRate}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-8 mb-8 border-y border-border-default/50 py-6">
+        <div>
+          <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest mb-1.5">Max Amount</p>
+          <p className="text-xl font-bold text-text-1">{maxAmount}</p>
         </div>
         <div>
-          <h4 className="text-base font-bold text-text-1 group-hover:text-accent transition-colors">{bank.name}</h4>
-          <div className="flex items-center gap-1 mt-1">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <svg key={s} className="w-3 h-3 text-warning fill-warning" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-            ))}
-            <span className="text-[10px] font-bold text-text-3 ml-2 tracking-tighter">(12.4k reviews)</span>
-          </div>
+          <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest mb-1.5">Tenure</p>
+          <p className="text-xl font-bold text-text-1">{tenure}</p>
         </div>
       </div>
-      <div className="text-right">
-        <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-[.2em] mb-1">Fixed Rate</p>
-        <span className="text-3xl font-mono font-extrabold text-white">{rate}</span>
+
+      <ul className="space-y-4 mb-8">
+        {['No hidden processing fees', 'Instant disbursement in 24hrs', 'Flexible grace period of 6 months'].map((feature, i) => (
+          <li key={i} className="flex items-center gap-3 text-xs font-semibold text-text-2 group-hover:text-text-1 transition-colors">
+            <div className="w-5 h-5 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 size={12} className="text-success" />
+            </div>
+            {feature}
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex gap-4 h-12">
+        <button className="flex-1 rounded-xl bg-bg-base border border-border-default text-sm font-bold text-text-1 hover:bg-bg-elevated transition-colors">
+          Compare Plans
+        </button>
+        <button className="flex-1 rounded-xl bg-accent text-bg-base text-sm font-bold hover:bg-white shadow-xl hover:shadow-accent-glow transition-all">
+          Claim Offer
+        </button>
       </div>
     </div>
-
-    <div className="grid grid-cols-2 gap-8 mb-8 border-y border-border-default/50 py-6">
-      <div>
-        <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest mb-1.5">Max Amount</p>
-        <p className="text-xl font-bold text-text-1">{maxAmount}</p>
-      </div>
-      <div>
-        <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest mb-1.5">Tenure</p>
-        <p className="text-xl font-bold text-text-1">{tenure}</p>
-      </div>
-    </div>
-
-    <ul className="space-y-4 mb-8">
-      {['No hidden processing fees', 'Instant disbursement in 24hrs', 'Flexible grace period of 6 months'].map((feature, i) => (
-        <li key={i} className="flex items-center gap-3 text-xs font-semibold text-text-2 group-hover:text-text-1 transition-colors">
-          <div className="w-5 h-5 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 size={12} className="text-success" />
-          </div>
-          {feature}
-        </li>
-      ))}
-    </ul>
-
-    <div className="flex gap-4 h-12">
-      <button className="flex-1 rounded-xl bg-bg-base border border-border-default text-sm font-bold text-text-1 hover:bg-bg-elevated transition-colors">
-        Compare Plans
-      </button>
-      <button className="flex-1 rounded-xl bg-accent text-bg-base text-sm font-bold hover:bg-white shadow-xl hover:shadow-accent-glow transition-all">
-        Claim Offer
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 const Dashboard = ({ onApplyLoan, onApplyScholarship }) => {
   const { user } = useUser();
   const [loanData, setLoanData] = useState(null);
   const [scholarshipData, setScholarshipData] = useState(null);
+  const [loanOffers, setLoanOffers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Real-time Firestore listeners
@@ -287,11 +291,21 @@ const Dashboard = ({ onApplyLoan, onApplyScholarship }) => {
       }
     });
 
+    // Listen to all loans automatically
+    const unsubOffers = onSnapshot(collection(db, "loans"), (querySnapshot) => {
+      const offersList = [];
+      querySnapshot.forEach((doc) => {
+        offersList.push({ id: doc.id, ...doc.data() });
+      });
+      setLoanOffers(offersList);
+    });
+
     setLoading(false);
 
     return () => {
       unsubLoan();
       unsubScholarship();
+      unsubOffers();
     };
   }, [user?.uid]);
 
@@ -476,24 +490,59 @@ const Dashboard = ({ onApplyLoan, onApplyScholarship }) => {
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/5 bg-bg-elevated/40 text-[10px] font-bold text-text-3 uppercase tracking-widest">
             <Info size={12} className="text-accent" /> Rates fixed for 90 days
+            {loanOffers.length === 0 && (
+              <button 
+                onClick={async () => {
+                  await setDoc(doc(db, "loans", "LOAN-OFFER-001"), {
+                    // Backward compatibility for Android app
+                    title: 'SBI Scholar Loan Scheme',
+                    interestRate: "8.55% - 10.75%",
+                    interestRateValue: 8.55,
+                    maxAmount: "₹20,00,000",
+                    maxAmountValue: 2000000,
+                    tenure: "5 - 15 years",
+                    approvalConfidence: 96,
+                    aiTag: "Best for Edu",
+                    // New comprehensive fields
+                    loanId: "LOAN-OFFER-001",
+                    bankName: "State Bank of India",
+                    loanType: "Education Loan",
+                    loanName: "SBI Scholar Loan Scheme",
+                    maxLoanAmount: 2000000,
+                    minLoanAmount: 50000,
+                    processingFee: "0 - 1%",
+                    loanTenure: "5 - 15 years",
+                    moratoriumPeriod: "Course Duration + 6 months",
+                    features: ["No collateral up to ₹7.5 Lakhs", "1% concession for female students", "Quick approval online"],
+                    eligibility: {
+                      nationality: "Indian",
+                      age: "18-35 years",
+                      academicRequirement: "Secured admission to a recognized institute",
+                      admission: "Entrance exam or merit-based"
+                    },
+                    requiredDocuments: ["Aadhar/PAN", "Admission Letter", "Mark sheets", "Income proof of co-borrower"],
+                    repaymentDetails: {
+                      emiStart: "After moratorium period ends",
+                      prepaymentCharges: "Nil",
+                      emiExample: "₹20,500/month for ₹20L at 8.85% for 12 years"
+                    },
+                    status: "Available",
+                    rating: 4.5,
+                    applyLink: "/apply-loan/sbi",
+                    createdAt: new Date().toISOString()
+                  });
+                }}
+                className="ml-2 text-accent underline cursor-pointer"
+              >
+                Seed Default Offers
+              </button>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <LoanCard 
-            bank={{ name: 'JP Morgan Chase', initials: 'JP', initialColor: 'text-blue-500' }}
-            rate="4.25%"
-            maxAmount="$150,000"
-            tenure="15 Years"
-            popular
-            delay={1}
-          />
-          <LoanCard 
-            bank={{ name: 'HSBC Global', initials: 'H', initialColor: 'text-red-500' }}
-            rate="5.10%"
-            maxAmount="$120,000"
-            tenure="10 Years"
-            delay={2}
-          />
+          {loanOffers.map((offer, idx) => (
+            <LoanCard key={offer.id} {...offer} delay={idx + 1} />
+          ))}
         </div>
       </section>
 

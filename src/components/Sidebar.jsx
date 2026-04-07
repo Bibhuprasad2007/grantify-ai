@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Sparkles, BadgeDollarSign, Landmark, 
   RefreshCw, GraduationCap, Building2, FolderOpen, 
   ClipboardList, Bell, UserCircle, ShieldCheck, 
-  ChevronLeft, ChevronRight, LogOut 
+  ChevronLeft, ChevronRight, LogOut
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
@@ -78,21 +78,26 @@ const Sidebar = ({ isCollapsed, toggleCollapse, onNavigate, activeView, onOpenAi
       {/* User Mini Profile */}
       {!isCollapsed && (
         <div className="px-4 mb-8">
-          <div className="p-3 rounded-xl bg-bg-elevated/50 border border-border-default flex items-center gap-3">
+          <button 
+            onClick={() => onNavigate('profile')}
+            className={`w-full p-3 rounded-xl bg-bg-elevated/50 border flex items-center gap-3 transition-all text-left hover:bg-white/5 group
+              ${activeView === 'profile' ? 'border-accent shadow-lg shadow-accent/20' : 'border-border-default hover:border-accent/50'}
+            `}
+          >
             {user?.photoURL ? (
               <img src={user.photoURL} alt="Profile" className="w-10 h-10 rounded-full border border-accent/30 object-cover" />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-accent-ai/20 flex items-center justify-center border border-accent-ai/30">
+              <div className="w-10 h-10 rounded-full bg-accent-ai/20 flex items-center justify-center border border-accent-ai/30 group-hover:bg-accent-ai/30 transition-colors">
                 <span className="text-accent-ai font-bold text-xs">{initials}</span>
               </div>
             )}
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-bold text-text-1 truncate">{displayName}</p>
+              <p className="text-sm font-bold text-text-1 truncate group-hover:text-accent transition-colors">{displayName}</p>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-text-3 font-medium uppercase px-1.5 py-0.5 bg-bg-base rounded truncate">{user?.email?.split('@')[0] || 'Student'}</span>
+                <span className="text-[10px] text-text-3 font-medium uppercase px-1.5 py-0.5 bg-bg-base border border-border-default rounded truncate">{user?.email?.split('@')[0] || 'Student'}</span>
               </div>
             </div>
-          </div>
+          </button>
         </div>
       )}
 
@@ -114,6 +119,13 @@ const Sidebar = ({ isCollapsed, toggleCollapse, onNavigate, activeView, onOpenAi
             isCollapsed={isCollapsed} 
             onClick={() => onNavigate('ai-assistant')} 
           />
+          <SidebarItem 
+            icon={ShieldCheck} 
+            label="Eligibility Check" 
+            active={activeView === 'eligibility'} 
+            isCollapsed={isCollapsed} 
+            onClick={() => onNavigate('eligibility')} 
+          />
         </NavigationGroup>
 
         <NavigationGroup title="Finances" isCollapsed={isCollapsed}>
@@ -124,7 +136,13 @@ const Sidebar = ({ isCollapsed, toggleCollapse, onNavigate, activeView, onOpenAi
             active={activeView === 'apply-loan'}
             onClick={() => onNavigate('apply-loan')}
           />
-          <SidebarItem icon={Landmark} label="Loan Offers" isCollapsed={isCollapsed} />
+          <SidebarItem 
+            icon={Landmark} 
+            label="Loan Offers" 
+            isCollapsed={isCollapsed} 
+            active={activeView === 'loan-offers'}
+            onClick={() => onNavigate('loan-offers')}
+          />
         </NavigationGroup>
 
         <NavigationGroup title="Opportunities" isCollapsed={isCollapsed}>
@@ -135,17 +153,29 @@ const Sidebar = ({ isCollapsed, toggleCollapse, onNavigate, activeView, onOpenAi
             active={activeView === 'apply-scholarship'}
             onClick={() => onNavigate('apply-scholarship')}
           />
-          <SidebarItem icon={Building2} label="Government Aid" isCollapsed={isCollapsed} />
+          <SidebarItem 
+            icon={Building2} 
+            label="Government Aid" 
+            isCollapsed={isCollapsed} 
+            active={activeView === 'government-aid'}
+            onClick={() => onNavigate('government-aid')}
+          />
         </NavigationGroup>
 
         <NavigationGroup title="Manage" isCollapsed={isCollapsed}>
-          <SidebarItem icon={FolderOpen} label="Verified Documents" isCollapsed={isCollapsed} />
+          <SidebarItem icon={FolderOpen} label="Verified Documents" isCollapsed={isCollapsed} active={activeView === 'verified-documents'} onClick={() => onNavigate('verified-documents')} />
           <SidebarItem icon={ClipboardList} label="Applications" isCollapsed={isCollapsed} />
           <SidebarItem icon={Bell} label="Notifications" badge="3" isCollapsed={isCollapsed} />
         </NavigationGroup>
 
         <NavigationGroup title="Account" isCollapsed={isCollapsed}>
-          <SidebarItem icon={UserCircle} label="Profile" isCollapsed={isCollapsed} />
+          <SidebarItem 
+            icon={UserCircle} 
+            label="Profile" 
+            isCollapsed={isCollapsed} 
+            active={activeView === 'profile'}
+            onClick={() => onNavigate('profile')}
+          />
           <SidebarItem icon={LogOut} label="Logout" isCollapsed={isCollapsed} onClick={handleLogout} />
         </NavigationGroup>
       </div>

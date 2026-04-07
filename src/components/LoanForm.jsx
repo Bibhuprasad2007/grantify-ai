@@ -213,7 +213,7 @@ const UploadComponent = ({ label, desc, onUpload, preview, fileName, icon: Icon 
 
 // --- Main Form Component ---
 
-const LoanForm = ({ onBackToDashboard }) => {
+const LoanForm = ({ onBackToDashboard, onCheckCibil }) => {
   const { user } = useUser();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -223,6 +223,8 @@ const LoanForm = ({ onBackToDashboard }) => {
   const [topWarning, setTopWarning] = useState('');
   const [saveStatus, setSaveStatus] = useState(null);
   const [appId, setAppId] = useState('');
+  const [cibilScore, setCibilScore] = useState(null);
+  const [cibilChecking, setCibilChecking] = useState(false);
   
   // File objects (not saved to Firestore directly)
   const [files, setFiles] = useState({
@@ -478,6 +480,21 @@ const LoanForm = ({ onBackToDashboard }) => {
       });
   };
 
+  const handleCheckCibil = () => {
+    if (!formData.pan || formData.pan.length < 10) {
+      alert("Please enter a valid 10-character PAN Number to check CIBIL score.");
+      return;
+    }
+    setCibilChecking(true);
+    // Simulate API call for CIBIL
+    setTimeout(() => {
+      // Mock score between 600 and 850
+      const mockScore = Math.floor(Math.random() * (850 - 600 + 1)) + 600;
+      setCibilScore(mockScore);
+      setCibilChecking(false);
+    }, 1500);
+  };
+
   const generatePDF = () => {
     const doc2 = new jsPDF();
     doc2.setFontSize(22);
@@ -543,9 +560,15 @@ const LoanForm = ({ onBackToDashboard }) => {
            <h2 className="text-3xl font-heading font-extrabold text-white">Loan <span className="text-accent">Application</span></h2>
            <p className="text-text-3 text-sm font-mono mt-1">REF: {appId}</p>
         </div>
-        <div className="hidden sm:block">
-           <div className="px-5 py-2.5 bg-accent/10 border border-accent/20 rounded-2xl text-accent text-xs font-bold flex items-center gap-2">
-             <BadgeDollarSign size={16} /> INSTANT DISBURSEMENT ELIGIBLE
+        <div className="hidden sm:flex flex-col items-end gap-3">
+           <button 
+             onClick={onCheckCibil} 
+             className="px-6 py-2.5 bg-gradient-to-r from-accent to-accent-ai rounded-2xl text-white text-xs font-bold flex items-center gap-2 hover:shadow-xl hover:shadow-accent/20 transition-all hover:scale-105"
+           >
+             <Sparkles size={16} /> Check CIBIL Score
+           </button>
+           <div className="px-5 py-2 bg-accent/10 border border-accent/20 rounded-2xl text-accent text-[10px] font-bold flex items-center gap-2">
+             <BadgeDollarSign size={14} /> INSTANT DISBURSEMENT ELIGIBLE
            </div>
         </div>
       </div>
