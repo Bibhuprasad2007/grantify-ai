@@ -78,14 +78,13 @@ Analyze the uploaded document image/PDF and extract identity information from it
 - Income Certificate
 - Father's/Mother's Aadhar Card
 - Bank Passbook
+- Bank CV Document
 - College ID Card
 - Bonafide Certificate
 - Fee Structure
 - Ration Card
 - Passport Size Photo
 - Last Exam Marksheet
-- Account Info Sheet
-- IFSC Code Proof
 
 ## EXTRACTION RULES
 1. Extract ALL readable text fields from the document.

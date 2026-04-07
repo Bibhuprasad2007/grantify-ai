@@ -50,38 +50,89 @@ const BankAdminPanel = () => {
 
   // Fetch Live Data from Firestore
   React.useEffect(() => {
-    const loansRef = collection(db, 'loans');
-    const q = query(loansRef, orderBy('createdAt', 'desc'));
+    const loansRef = collection(db, 'loanApplications');
+    const schRef = collection(db, 'scholarshipApplications');
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const loanData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    const updateCombinedData = (loanDocs, schDocs) => {
+      const merged = [
+        ...loanDocs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: 'Loan',
+            collection: 'loanApplications',
+            name: data.personalInfo?.name || 'Unknown',
+            amount: data.bankLoanInfo?.loanAmount ? `₹${data.bankLoanInfo.loanAmount}` : 'N/A',
+            course: data.academicInfo?.courseName || 'N/A',
+            district: data.personalInfo?.district || 'Odisha',
+            status: data.status || 'Pending',
+            cibil: data.cibilScore || 720,
+            aiRisk: data.aiRisk || 'Low',
+            ...data
+          };
+        }),
+        ...schDocs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: 'Scholarship',
+            collection: 'scholarshipApplications',
+            name: data.personalInfo?.name || 'Unknown',
+            amount: data.scholarshipAmount ? `₹${data.scholarshipAmount}` : 'N/A',
+            course: data.academicInfo?.courseName || 'N/A',
+            district: data.personalInfo?.district || 'Odisha',
+            status: data.status || 'Pending',
+            cibil: 'N/A',
+            aiRisk: 'Low',
+            ...data
+          };
+        })
+      ].sort((a, b) => {
+        const dateA = a.updatedAt?.seconds || 0;
+        const dateB = b.updatedAt?.seconds || 0;
+        return dateB - dateA;
+      });
+
+      setLoans(merged);
 
       // Calculate Real-time Stats
-      const pending = loanData.filter(l => l.status === 'Pending').length;
-      const approved = loanData.filter(l => l.status === 'Approved').length;
-      const rejected = loanData.filter(l => l.status === 'Rejected').length;
-      
-      setLoans(loanData);
+      const pending = merged.filter(l => l.status === 'Pending').length;
+      const approved = merged.filter(l => l.status === 'Approved').length;
+      const rejected = merged.filter(l => l.status === 'Rejected').length;
+
       setStats({
-        requests: loanData.length,
+        requests: merged.length,
         pending,
         approved,
         rejected,
-        disbursed: `₹${(approved * 5.2).toFixed(1)}L`, // Mock calculation based on real approvals
+        disbursed: `₹${(approved * 5.2).toFixed(1)}L`,
       });
       setLoading(false);
+    };
+
+    let loanDocs = [];
+    let schDocs = [];
+
+    const unsubLoans = onSnapshot(loansRef, (snapshot) => {
+      loanDocs = snapshot.docs;
+      updateCombinedData(loanDocs, schDocs);
     });
 
-    return () => unsubscribe();
+    const unsubSch = onSnapshot(schRef, (snapshot) => {
+      schDocs = snapshot.docs;
+      updateCombinedData(loanDocs, schDocs);
+    });
+
+    return () => {
+      unsubLoans();
+      unsubSch();
+    };
   }, []);
 
   // Handle switching to a specific loan review
   const handleReviewLoan = (loan) => {
     setSelectedLoan(loan);
-    setActiveTab('decision'); 
+    setActiveTab('verification'); 
   };
 
   const renderActiveTab = () => {
@@ -102,6 +153,7 @@ const BankAdminPanel = () => {
       case 'requests': 
         return <LoanRequests 
           loans={loans} 
+          stats={stats}
           onReviewLoan={handleReviewLoan} 
         />;
       case 'decision':
@@ -112,9 +164,15 @@ const BankAdminPanel = () => {
       case 'risk': 
         return <RiskAssessment loans={loans} />;
       case 'disbursements': 
-        return <DisbursementTracking disbursements={loans.filter(l => l.status === 'Approved')} />;
+        return <DisbursementTracking disbursements={loans} />;
       case 'verification': 
-        return <DocVerification />;
+        return <DocVerification 
+          selectedApp={selectedLoan} 
+          onVerificationComplete={() => {
+            setActiveTab('risk');
+            // We keep the selectedLoan selected so Risk Assessment can highlight it
+          }} 
+        />;
       case 'messages': 
         return <CommPanel />;
       case 'reports': 
