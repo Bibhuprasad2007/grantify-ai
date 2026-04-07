@@ -459,40 +459,59 @@ const ApplicationForm = ({ onBackToDashboard }) => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!validateStep(3)) return;
+    if (!validateStep(3)) {
+      setTopWarning('Please fix the errors before submitting');
+      return;
+    }
     
     setIsSubmitting(true);
     try {
-      // 1. Submit the main form data immediately so it shows in District Panel
+      // 1. Submit the main form data immediately
+      // This ensures the record exists in Firestore for the District Panel
       await saveToFirestore("Submitted", 3);
       
-      const basePath = `scholarshipApplications/${user.uid}`;
-      
-      // 2. Handle file uploads (only if files are selected)
-      const uploadPromises = [
-        files.profilePhoto ? uploadFile(files.profilePhoto, `${basePath}/profile.jpg`) : Promise.resolve(null),
-        files.marksheet ? uploadFile(files.marksheet, `${basePath}/marksheet.pdf`) : Promise.resolve(null),
-        files.certificate ? uploadFile(files.certificate, `${basePath}/certificate.pdf`) : Promise.resolve(null),
-        files.passbook ? uploadFile(files.passbook, `${basePath}/passbook.pdf`) : Promise.resolve(null)
-      ];
-
-      const [photoUrl, marksheetUrl, certificateUrl, passbookUrl] = await Promise.all(uploadPromises);
-
-      // 3. Update document with URLs if any files were uploaded
-      const fileUrls = {};
-      if (photoUrl) fileUrls['personalInfo.photoUrl'] = photoUrl;
-      if (marksheetUrl) fileUrls['academicInfo.marksheetUrl'] = marksheetUrl;
-      if (certificateUrl) fileUrls['academicInfo.certificateUrl'] = certificateUrl;
-      if (passbookUrl) fileUrls['bankInfo.passbookUrl'] = passbookUrl;
-
-      if (Object.keys(fileUrls).length > 0) {
-        await updateDoc(doc(db, "scholarshipApplications", user.uid), fileUrls);
-      }
-
+      // 🚀 SUCCESS-FIRST: Trigger success UI immediately so the user isn't stuck
       setIsSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // 2. Handle file uploads asynchronously (Non-blocking)
+      const handleBackgroundUploads = async () => {
+        try {
+          const basePath = `scholarshipApplications/${user.uid}`;
+          const fileUrls = {};
+          
+          const uploadAndGetUrl = async (file, path, key) => {
+            if (!file) return;
+            try {
+              const url = await uploadFile(file, path);
+              if (url) fileUrls[key] = url;
+            } catch (err) {
+              console.warn(`Failed to upload ${key}:`, err);
+            }
+          };
+
+          await Promise.all([
+            uploadAndGetUrl(files.profilePhoto, `${basePath}/profile.jpg`, 'personalInfo.photoUrl'),
+            uploadAndGetUrl(files.marksheet, `${basePath}/marksheet.pdf`, 'academicInfo.marksheetUrl'),
+            uploadAndGetUrl(files.certificate, `${basePath}/certificate.pdf`, 'academicInfo.certificateUrl'),
+            uploadAndGetUrl(files.passbook, `${basePath}/passbook.pdf`, 'bankInfo.passbookUrl')
+          ]);
+
+          if (Object.keys(fileUrls).length > 0) {
+            await updateDoc(doc(db, "scholarshipApplications", user.uid), fileUrls);
+            console.log("Background file upload complete ✅");
+          }
+        } catch (bgError) {
+          console.error("Background Upload Error:", bgError);
+        }
+      };
+
+      // Run uploads in background
+      handleBackgroundUploads();
+
     } catch (error) {
-      console.error("Submission Error:", error);
-      alert("Submission Error: " + error.message);
+      console.error("Submission Error Details:", error);
+      alert("Submission Error: " + (error.message || "Unknown error occurred. Please check your connection."));
     } finally {
       setIsSubmitting(false);
     }
