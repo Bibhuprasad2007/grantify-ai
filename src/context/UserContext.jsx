@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, googleProvider, db } from '../firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, updateProfile, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const UserContext = createContext(null);
 
@@ -44,7 +44,7 @@ export const UserProvider = ({ children }) => {
       } catch { /* ignore */ }
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       // Don't overwrite if official session exists
       if (sessionStorage.getItem('edufinance_district_session') || sessionStorage.getItem('edufinance_bank_session')) {
         setLoading(false);
@@ -52,12 +52,25 @@ export const UserProvider = ({ children }) => {
       }
       if (firebaseUser) {
         const storedRole = sessionStorage.getItem('edufinance_role') || 'applicant';
+        
+        // Fetch extended profile from Firestore
+        let extendedData = {};
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            extendedData = userDoc.data();
+          }
+        } catch (err) {
+          console.error("Error fetching user doc:", err);
+        }
+
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
           photoURL: firebaseUser.photoURL,
           role: storedRole,
+          ...extendedData
         });
       } else {
         if (!sessionStorage.getItem('edufinance_district_session')) {
@@ -195,7 +208,21 @@ export const UserProvider = ({ children }) => {
         setUser(prev => ({ ...prev, ...data }));
         return;
       }
-      await updateProfile(auth.currentUser, data);
+      
+      // Update Auth Profile if needed
+      if (data.displayName || data.photoURL) {
+        await updateProfile(auth.currentUser, {
+          ...(data.displayName && { displayName: data.displayName }),
+          ...(data.photoURL && { photoURL: data.photoURL })
+        });
+      }
+
+      // Update Firestore
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        ...data,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
       setUser(prev => ({
         ...prev,
         ...data
