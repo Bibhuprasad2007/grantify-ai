@@ -101,35 +101,14 @@ const DistrictAdminPanel = () => {
 
   // ──── DATA FETCHING ────
   useEffect(() => {
-    const loanQuery = collection(db, 'loanApplications');
     const schQuery = collection(db, 'scholarshipApplications');
-
-    const unsubLoans = onSnapshot(loanQuery, (snapshot) => {
-      const loanData = snapshot.docs.map(doc => {
-        const d = doc.data();
-        return {
-          id: d.applicationId || doc.id,
-          rawId: doc.id,
-          name: d.personalInfo?.name || 'Unknown',
-          type: 'Loan',
-          status: d.status || 'Pending',
-          amount: d.bankLoanInfo?.loanAmount ? `₹${d.bankLoanInfo.loanAmount}` : '₹0',
-          aadhaar: d.personalInfo?.aadhaar || 'N/A',
-          date: d.updatedAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString(),
-          priority: d.bankLoanInfo?.loanAmount > 500000,
-          cibil: 700, // Default for now
-          docs: d.bankLoanInfo?.passbookUrl ? [{ type: 'Passbook', url: d.bankLoanInfo.passbookUrl }] : []
-        };
-      });
-      updateAllData(loanData, 'loans');
-    });
 
     const unsubSchs = onSnapshot(schQuery, (snapshot) => {
       const schData = snapshot.docs.map(doc => {
         const d = doc.data();
         const income = parseFloat(d.familyInfo?.annualIncome || 0);
         const marks = parseFloat(d.academicInfo?.percentage || 0);
-        const deadlineDate = new Date('2026-05-15'); // Placeholder deadline
+        const deadlineDate = new Date('2026-05-15'); 
         const isApproaching = (deadlineDate - new Date()) / (1000 * 60 * 60 * 24) < 15;
 
         return {
@@ -155,27 +134,17 @@ const DistrictAdminPanel = () => {
           ]
         };
       });
-      updateAllData(schData, 'scholarships');
-    });
 
-    let allLoans = [];
-    let allSchs = [];
-
-    const updateAllData = (data, source) => {
-      if (source === 'loans') allLoans = data;
-      else allSchs = data;
-
-      const combined = [...allLoans, ...allSchs];
-      setApps(combined);
+      setApps(schData);
 
       // Derive Stats
-      const approved = combined.filter(a => a.status === 'Approved' || a.status === 'Verified').length;
-      const pending = combined.filter(a => a.status === 'Pending' || a.status === 'Submitted').length;
-      const rejected = combined.filter(a => a.status === 'Rejected').length;
+      const approved = schData.filter(a => a.status === 'Approved' || a.status === 'Verified').length;
+      const pending = schData.filter(a => a.status === 'Pending' || a.status === 'Submitted').length;
+      const rejected = schData.filter(a => a.status === 'Rejected').length;
       
       setStats({
-        students: new Set(combined.map(a => a.aadhaar)).size,
-        applications: combined.length,
+        students: new Set(schData.map(a => a.aadhaar)).size,
+        applications: schData.length,
         pending,
         approved,
         rejected
@@ -183,12 +152,13 @@ const DistrictAdminPanel = () => {
 
       // Derive Documents
       const extractedDocs = [];
-      combined.forEach(a => {
+      schData.forEach(a => {
         if (a.docs) {
           a.docs.forEach((doc, idx) => {
             extractedDocs.push({
               id: `${a.id}-doc-${idx}`,
               student: a.name,
+              userId: a.userId,
               type: doc.type,
               status: a.status === 'Approved' ? 'Verified' : a.status,
               aiTag: 'Auto-scanned',
@@ -201,20 +171,17 @@ const DistrictAdminPanel = () => {
       setDocs(extractedDocs);
 
       // Derive Activity
-      const recent = combined.slice(0, 5).map(a => ({
-        text: `${a.name} ${a.status === 'Submitted' ? 'submitted' : a.status.toLowerCase()} ${a.type.toLowerCase()} application`,
+      const recent = schData.slice(0, 5).map(a => ({
+        text: `${a.name} submitted scholarship application`,
         time: a.date,
-        type: a.status === 'Submitted' ? 'new' : a.status.toLowerCase()
+        type: 'new'
       }));
       setActivities(recent);
       
       setLoading(false);
-    };
+    });
 
-    return () => {
-      unsubLoans();
-      unsubSchs();
-    }
+    return () => unsubSchs();
   }, []);
 
   const handleAppAction = async (appId, userId, type, action, reason = '') => {
