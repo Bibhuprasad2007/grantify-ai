@@ -101,6 +101,7 @@ const DistrictAdminPanel = () => {
 
   // ──── DATA FETCHING ────
   useEffect(() => {
+    const loanQuery = collection(db, 'loanApplications');
     const schQuery = collection(db, 'scholarshipApplications');
 
     let allLoans = [];
@@ -111,6 +112,7 @@ const DistrictAdminPanel = () => {
         const d = doc.data();
         return {
           id: d.applicationId || doc.id,
+          userId: doc.id,
           rawId: doc.id,
           name: d.personalInfo?.name || 'Unknown',
           type: 'Loan',
@@ -185,13 +187,13 @@ const DistrictAdminPanel = () => {
       setApps(combined);
 
       // Derive Stats
-      const approved = schData.filter(a => a.status === 'Approved' || a.status === 'Verified').length;
-      const pending = schData.filter(a => a.status === 'Pending' || a.status === 'Submitted').length;
-      const rejected = schData.filter(a => a.status === 'Rejected').length;
+      const approved = combined.filter(a => a.status === 'Approved' || a.status === 'Verified').length;
+      const pending = combined.filter(a => a.status === 'Pending' || a.status === 'Submitted').length;
+      const rejected = combined.filter(a => a.status === 'Rejected').length;
       
       setStats({
-        students: new Set(schData.map(a => a.aadhaar)).size,
-        applications: schData.length,
+        students: new Set(combined.map(a => a.aadhaar)).size,
+        applications: combined.length,
         pending,
         approved,
         rejected
@@ -199,7 +201,7 @@ const DistrictAdminPanel = () => {
 
       // Derive Documents
       const extractedDocs = [];
-      schData.forEach(a => {
+      combined.forEach(a => {
         if (a.docs) {
           a.docs.forEach((doc, idx) => {
             extractedDocs.push({
@@ -232,7 +234,7 @@ const DistrictAdminPanel = () => {
       setActivities(recent);
       
       setLoading(false);
-    });
+    };
 
     return () => {
       unsubLoans();
