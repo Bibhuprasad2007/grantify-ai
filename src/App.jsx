@@ -19,6 +19,7 @@ import HelpPage from './components/HelpPage';
 import ContactPage from './components/ContactPage';
 import CibilScorePage from './components/CibilScorePage';
 import DistrictAdminPanel from './components/DistrictAdminPanel';
+import BankAdminPanel from './components/BankAdminPanel';
 import { useUser } from './context/UserContext';
 import { GraduationCap } from 'lucide-react';
 
@@ -51,6 +52,11 @@ const App = () => {
   // District users get their own admin panel
   if (user.role === 'district') {
     return <DistrictAdminPanel />;
+  }
+
+  // Bank users get their own bank panel
+  if (user.role === 'bank') {
+    return <BankAdminPanel />;
   }
 
   const renderContent = () => {

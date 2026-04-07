@@ -14,24 +14,39 @@ const DISTRICT_CREDENTIALS = {
   displayName: 'District Officer - Bhadrak',
 };
 
+const BANK_CREDENTIALS = {
+  email: 'uco123@gmail.com',
+  branchCode: '756181',
+  password: 'bibhu123',
+  displayName: 'Bank Manager - UCO Bank',
+};
+
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if a district officer session exists in sessionStorage
+    // Check if a district officer session exists
     const districtSession = sessionStorage.getItem('edufinance_district_session');
+    const bankSession = sessionStorage.getItem('edufinance_bank_session');
+
     if (districtSession) {
       try {
         const parsed = JSON.parse(districtSession);
         setUser(parsed);
         setLoading(false);
-      } catch { /* ignore parse errors */ }
+      } catch { /* ignore */ }
+    } else if (bankSession) {
+      try {
+        const parsed = JSON.parse(bankSession);
+        setUser(parsed);
+        setLoading(false);
+      } catch { /* ignore */ }
     }
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // Don't overwrite if district officer is logged in
-      if (sessionStorage.getItem('edufinance_district_session')) {
+      // Don't overwrite if official session exists
+      if (sessionStorage.getItem('edufinance_district_session') || sessionStorage.getItem('edufinance_bank_session')) {
         setLoading(false);
         return;
       }
@@ -138,10 +153,34 @@ export const UserProvider = ({ children }) => {
     throw new Error('Invalid Access Code or Password. Contact your administrator.');
   };
 
+  // Bank login with hardcoded credentials
+  const loginAsBank = (email, branchCode, pwd) => {
+    if (
+      email === BANK_CREDENTIALS.email && 
+      branchCode === BANK_CREDENTIALS.branchCode && 
+      pwd === BANK_CREDENTIALS.password
+    ) {
+      const bankUser = {
+        uid: 'bank-officer-uco-001',
+        email: BANK_CREDENTIALS.email,
+        displayName: BANK_CREDENTIALS.displayName,
+        photoURL: null,
+        role: 'bank',
+        branchCode: BANK_CREDENTIALS.branchCode
+      };
+      sessionStorage.setItem('edufinance_bank_session', JSON.stringify(bankUser));
+      sessionStorage.setItem('edufinance_role', 'bank');
+      setUser(bankUser);
+      return true;
+    }
+    throw new Error('Invalid Bank Email, Branch Code, or Password.');
+  };
+
   const logout = async () => {
     try {
       sessionStorage.removeItem('edufinance_role');
       sessionStorage.removeItem('edufinance_district_session');
+      sessionStorage.removeItem('edufinance_bank_session');
       setUser(null);
       await signOut(auth);
     } catch (error) {
@@ -151,7 +190,11 @@ export const UserProvider = ({ children }) => {
 
   const updateUserProfile = async (data) => {
     try {
-      if (!auth.currentUser) throw new Error("No user logged in");
+      if (!auth.currentUser) {
+        // Mock update for bank/district
+        setUser(prev => ({ ...prev, ...data }));
+        return;
+      }
       await updateProfile(auth.currentUser, data);
       setUser(prev => ({
         ...prev,
@@ -166,7 +209,7 @@ export const UserProvider = ({ children }) => {
   return (
     <UserContext.Provider value={{ 
       user, loading, loginWithGoogle, logout, updateUserProfile, 
-      loginWithEmail, registerWithEmail, resetPassword, loginAsDistrict 
+      loginWithEmail, registerWithEmail, resetPassword, loginAsDistrict, loginAsBank 
     }}>
       {children}
     </UserContext.Provider>

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 const LoginPage = () => {
-  const { loginWithGoogle, loginWithEmail, registerWithEmail, resetPassword, loginAsDistrict } = useUser();
+  const { loginWithGoogle, loginWithEmail, registerWithEmail, resetPassword, loginAsDistrict, loginAsBank } = useUser();
   
   // role-selection | login | terms | register | forgot
   const [view, setView] = useState('role-selection'); 
@@ -76,7 +76,10 @@ const LoginPage = () => {
           return;
         } else if (role === 'bank') {
           if (!email || !branchCode || !password) throw new Error('Please enter Email, Branch Code, and Password.');
-          authIdentifier = email; 
+          // Hardcoded bank login
+          loginAsBank(email, branchCode, password);
+          setIsLoading(false);
+          return;
         } else {
           // Applicant
           if (!email || !password) throw new Error('Please enter both Email and Password.');
