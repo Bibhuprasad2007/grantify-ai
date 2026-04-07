@@ -138,8 +138,9 @@ You MUST respond with ONLY valid JSON (no markdown, no backticks, no explanation
 // ============================================================
 app.post('/api/verify-document', async (req, res) => {
   try {
-    const { 
+    let { 
       imageBase64,       // base64 encoded image data
+      fileUrl,           // direct URL to the file
       mimeType,          // e.g. "image/jpeg", "image/png", "application/pdf"
       expectedDocType,   // e.g. "Aadhar Card", "PAN Card"
       referenceUserName, // user's display name from Google profile
@@ -148,8 +149,26 @@ app.post('/api/verify-document', async (req, res) => {
       verifiedAadharData // previously verified Aadhar data (if any)
     } = req.body;
 
-    if (!imageBase64) {
-      return res.status(400).json({ error: 'Image data is required' });
+    if (!imageBase64 && !fileUrl) {
+      return res.status(400).json({ error: 'Image data or File URL is required' });
+    }
+
+    // --- Fetch from URL if provided ---
+    if (fileUrl && !imageBase64) {
+      console.log(`🌐 Fetching file from URL: ${fileUrl}...`);
+      try {
+        const response = await fetch(fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        imageBase64 = buffer.toString('base64');
+        if (!mimeType) {
+          mimeType = response.headers.get('content-type');
+        }
+        console.log(`✅ File fetched successfully. Size: ${Math.round(buffer.length/1024)} KB`);
+      } catch (fetchErr) {
+        console.error('❌ Failed to fetch file from URL:', fetchErr.message);
+        return res.status(500).json({ error: 'Failed to fetch file from URL' });
+      }
     }
 
     if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {

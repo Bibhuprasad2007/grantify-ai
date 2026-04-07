@@ -1,46 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
+import { db } from '../firebase';
+import { collection, onSnapshot, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import {
   LayoutDashboard, FileText, ShieldCheck, Users, Landmark, GraduationCap,
   Bell, BarChart3, Settings, LogOut, ChevronRight, Search, Filter,
   CheckCircle2, XCircle, Clock, AlertTriangle, Eye, Download,
   TrendingUp, TrendingDown, ArrowUpRight, Sparkles, BadgeDollarSign,
-  Send, FileDown, UserCheck, Flag, Star, MessageSquare, ChevronDown
+  Send, FileDown, UserCheck, Flag, Star, MessageSquare, ChevronDown,
+  Activity, ArrowLeft, ExternalLink, Calendar, Briefcase, GraduationCap as ScholarshipIcon
 } from 'lucide-react';
 
-// ──── MOCK DATA ────
-const MOCK_STATS = { students: 12847, applications: 3256, pending: 487, approved: 2104, rejected: 665 };
-
-const MOCK_APPS = [
-  { id: 'APP-2026-001', name: 'Rahul Kumar', type: 'Loan', status: 'Pending', amount: '₹2,50,000', aadhaar: '8765XXXX4321', date: '2026-04-05', priority: true, cibil: 742 },
-  { id: 'APP-2026-002', name: 'Priya Sharma', type: 'Scholarship', status: 'Approved', amount: '₹75,000', aadhaar: '9123XXXX5678', date: '2026-04-04', priority: false, cibil: 810 },
-  { id: 'APP-2026-003', name: 'Amit Patel', type: 'Loan', status: 'Pending', amount: '₹3,00,000', aadhaar: '7654XXXX8901', date: '2026-04-03', priority: true, cibil: 680 },
-  { id: 'APP-2026-004', name: 'Sneha Das', type: 'Scholarship', status: 'Rejected', amount: '₹50,000', aadhaar: '6543XXXX2345', date: '2026-04-02', priority: false, cibil: 720 },
-  { id: 'APP-2026-005', name: 'Vikram Singh', type: 'Loan', status: 'Pending', amount: '₹1,80,000', aadhaar: '5432XXXX6789', date: '2026-04-01', priority: false, cibil: 755 },
-  { id: 'APP-2026-006', name: 'Anita Devi', type: 'Scholarship', status: 'Approved', amount: '₹1,00,000', aadhaar: '4321XXXX7890', date: '2026-03-31', priority: true, cibil: 690 },
-];
-
-const MOCK_DOCS = [
-  { id: 1, student: 'Rahul Kumar', type: 'Aadhaar Card', status: 'Pending', aiTag: null, flagged: false },
-  { id: 2, student: 'Rahul Kumar', type: 'PAN Card', status: 'Verified', aiTag: 'Auto-Verified by AI', flagged: false },
-  { id: 3, student: 'Priya Sharma', type: 'Income Certificate', status: 'Pending', aiTag: null, flagged: true },
-  { id: 4, student: 'Amit Patel', type: 'Bank Passbook', status: 'Pending', aiTag: null, flagged: false },
-  { id: 5, student: 'Sneha Das', type: 'Aadhaar Card', status: 'Verified', aiTag: 'Auto-Verified by AI', flagged: false },
-  { id: 6, student: 'Vikram Singh', type: 'PAN Card', status: 'Rejected', aiTag: null, flagged: true },
-];
-
-const MOCK_SCHEMES = [
-  { id: 1, name: 'National Merit Scholarship', slots: 500, filled: 342, deadline: '2026-05-15' },
-  { id: 2, name: 'SC/ST Scholarship', slots: 1000, filled: 876, deadline: '2026-06-01' },
-  { id: 3, name: 'EWS Education Fund', slots: 300, filled: 210, deadline: '2026-04-30' },
-];
-
-const ACTIVITY_FEED = [
-  { text: 'Rahul Kumar submitted loan application', time: '2 min ago', type: 'new' },
-  { text: 'Priya Sharma scholarship approved by Officer Sinha', time: '15 min ago', type: 'approved' },
-  { text: 'Amit Patel flagged for document review', time: '1 hr ago', type: 'flagged' },
-  { text: 'Sneha Das application rejected', time: '3 hrs ago', type: 'rejected' },
-];
+// Demo data removed. Using Firestore real-time listeners.
 
 // ──── SIDEBAR NAV ITEMS ────
 const NAV_ITEMS = [
@@ -48,7 +19,6 @@ const NAV_ITEMS = [
   { key: 'applications', label: 'Applications', icon: FileText },
   { key: 'documents', label: 'Documents', icon: ShieldCheck },
   { key: 'students', label: 'Students', icon: Users },
-  { key: 'loans', label: 'Loan Approval', icon: Landmark },
   { key: 'scholarships', label: 'Scholarships', icon: GraduationCap },
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'reports', label: 'Reports', icon: BarChart3 },
@@ -91,8 +61,8 @@ const SimpleBar = ({ data }) => {
 };
 
 const CHART_DATA = [
-  { label: 'Jan', value: 120 }, { label: 'Feb', value: 200 }, { label: 'Mar', value: 340 },
-  { label: 'Apr', value: 280 }, { label: 'May', value: 410 }, { label: 'Jun', value: 380 },
+  { label: 'Jan', value: 0 }, { label: 'Feb', value: 0 }, { label: 'Mar', value: 10 },
+  { label: 'Apr', value: 5 }, { label: 'May', value: 0 }, { label: 'Jun', value: 0 },
 ];
 
 // ──── STATUS BADGE ────
@@ -117,20 +87,190 @@ const DistrictAdminPanel = () => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType] = useState('All');
   const [selectedApp, setSelectedApp] = useState(null);
-  const [apps, setApps] = useState(MOCK_APPS);
-  const [docs, setDocs] = useState(MOCK_DOCS);
+  const [apps, setApps] = useState([]);
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ students: 0, applications: 0, pending: 0, approved: 0, rejected: 0 });
+  const [activities, setActivities] = useState([]);
   const [remark, setRemark] = useState('');
   const [announcementText, setAnnouncementText] = useState('');
   const [announcementTarget, setAnnouncementTarget] = useState('all');
+  const [docSearchTerm, setDocSearchTerm] = useState('');
+  const [verifyingDocId, setVerifyingDocId] = useState(null);
+  const [aiDocResults, setAiDocResults] = useState({});
 
-  const handleAppAction = (appId, action) => {
-    setApps(prev => prev.map(a => a.id === appId ? { ...a, status: action === 'approve' ? 'Approved' : 'Rejected' } : a));
-    setSelectedApp(null);
-    setRemark('');
+  // ──── DATA FETCHING ────
+  useEffect(() => {
+    const loanQuery = collection(db, 'loanApplications');
+    const schQuery = collection(db, 'scholarshipApplications');
+
+    const unsubLoans = onSnapshot(loanQuery, (snapshot) => {
+      const loanData = snapshot.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: d.applicationId || doc.id,
+          rawId: doc.id,
+          name: d.personalInfo?.name || 'Unknown',
+          type: 'Loan',
+          status: d.status || 'Pending',
+          amount: d.bankLoanInfo?.loanAmount ? `₹${d.bankLoanInfo.loanAmount}` : '₹0',
+          aadhaar: d.personalInfo?.aadhaar || 'N/A',
+          date: d.updatedAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString(),
+          priority: d.bankLoanInfo?.loanAmount > 500000,
+          cibil: 700, // Default for now
+          docs: d.bankLoanInfo?.passbookUrl ? [{ type: 'Passbook', url: d.bankLoanInfo.passbookUrl }] : []
+        };
+      });
+      updateAllData(loanData, 'loans');
+    });
+
+    const unsubSchs = onSnapshot(schQuery, (snapshot) => {
+      const schData = snapshot.docs.map(doc => {
+        const d = doc.data();
+        const income = parseFloat(d.familyInfo?.annualIncome || 0);
+        const marks = parseFloat(d.academicInfo?.percentage || 0);
+        const deadlineDate = new Date('2026-05-15'); // Placeholder deadline
+        const isApproaching = (deadlineDate - new Date()) / (1000 * 60 * 60 * 24) < 15;
+
+        return {
+          id: d.applicationId || doc.id,
+          userId: doc.id,
+          name: d.personalInfo?.name || 'Unknown',
+          type: 'Scholarship',
+          status: d.status || 'Pending',
+          amount: d.academicInfo?.percentage ? `${d.academicInfo.percentage}% Marks` : 'N/A',
+          aadhaar: d.personalInfo?.aadhaar || 'N/A',
+          date: d.updatedAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString(),
+          priority: (income < 250000 && marks > 80) || isApproaching,
+          aiScore: Math.round((marks * 0.7) + (Math.max(0, 300000 - income) / 300000 * 30)),
+          personalInfo: d.personalInfo || {},
+          academicInfo: d.academicInfo || {},
+          bankInfo: d.bankInfo || {},
+          rejectionReason: d.rejectionReason || '',
+          docs: [
+            ...(d.personalInfo?.photoUrl ? [{ type: 'Profile Photo', url: d.personalInfo.photoUrl }] : []),
+            ...(d.academicInfo?.marksheetUrl ? [{ type: 'Marksheet', url: d.academicInfo.marksheetUrl }] : []),
+            ...(d.academicInfo?.certificateUrl ? [{ type: 'Caste Certificate', url: d.academicInfo.certificateUrl }] : []),
+            ...(d.bankInfo?.passbookUrl ? [{ type: 'Bank Passbook', url: d.bankInfo.passbookUrl }] : [])
+          ]
+        };
+      });
+      updateAllData(schData, 'scholarships');
+    });
+
+    let allLoans = [];
+    let allSchs = [];
+
+    const updateAllData = (data, source) => {
+      if (source === 'loans') allLoans = data;
+      else allSchs = data;
+
+      const combined = [...allLoans, ...allSchs];
+      setApps(combined);
+
+      // Derive Stats
+      const approved = combined.filter(a => a.status === 'Approved' || a.status === 'Verified').length;
+      const pending = combined.filter(a => a.status === 'Pending' || a.status === 'Submitted').length;
+      const rejected = combined.filter(a => a.status === 'Rejected').length;
+      
+      setStats({
+        students: new Set(combined.map(a => a.aadhaar)).size,
+        applications: combined.length,
+        pending,
+        approved,
+        rejected
+      });
+
+      // Derive Documents
+      const extractedDocs = [];
+      combined.forEach(a => {
+        if (a.docs) {
+          a.docs.forEach((doc, idx) => {
+            extractedDocs.push({
+              id: `${a.id}-doc-${idx}`,
+              student: a.name,
+              type: doc.type,
+              status: a.status === 'Approved' ? 'Verified' : a.status,
+              aiTag: 'Auto-scanned',
+              flagged: false,
+              url: doc.url
+            });
+          });
+        }
+      });
+      setDocs(extractedDocs);
+
+      // Derive Activity
+      const recent = combined.slice(0, 5).map(a => ({
+        text: `${a.name} ${a.status === 'Submitted' ? 'submitted' : a.status.toLowerCase()} ${a.type.toLowerCase()} application`,
+        time: a.date,
+        type: a.status === 'Submitted' ? 'new' : a.status.toLowerCase()
+      }));
+      setActivities(recent);
+      
+      setLoading(false);
+    };
+
+    return () => {
+      unsubLoans();
+      unsubSchs();
+    }
+  }, []);
+
+  const handleAppAction = async (appId, userId, type, action, reason = '') => {
+    try {
+      const collectionName = type === 'Loan' ? 'loanApplications' : 'scholarshipApplications';
+      const docRef = doc(db, collectionName, userId);
+      const updateData = {
+          status: action === 'approve' ? 'Approved' : 'Rejected',
+          updatedAt: serverTimestamp()
+      };
+      if (action === 'reject' && reason) {
+          updateData.rejectionReason = reason;
+      }
+      
+      await updateDoc(docRef, updateData);
+      setSelectedApp(null);
+      setRemark('');
+      alert(`Application ${action}d successfully.`);
+    } catch (error) {
+      console.error("Error updating application:", error);
+      alert("Failed to update application status.");
+    }
   };
 
   const handleDocAction = (docId, action) => {
     setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: action === 'verify' ? 'Verified' : 'Rejected' } : d));
+  };
+
+  const handleAIVerify = async (doc) => {
+    setVerifyingDocId(doc.id);
+    try {
+      const response = await fetch('http://localhost:3002/api/verify-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileUrl: doc.url,
+          expectedDocType: doc.type,
+          referenceUserName: doc.student,
+          userId: doc.userId
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAiDocResults(prev => ({ ...prev, [doc.id]: data.result }));
+        if (data.result.verified) {
+            handleDocAction(doc.id, 'verify');
+        }
+      } else {
+        alert("AI Verification failed: " + data.error);
+      }
+    } catch (err) {
+      console.error("AI Verify Error:", err);
+      alert("Network error during AI verification.");
+    } finally {
+      setVerifyingDocId(null);
+    }
   };
 
   const filteredApps = apps.filter(a => {
@@ -152,11 +292,11 @@ const DistrictAdminPanel = () => {
         <div className="px-4 py-2 bg-[#006A8E]/10 border border-[#006A8E]/20 rounded-xl text-[#006A8E] text-xs font-bold">District: Patna</div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard label="Students" value={MOCK_STATS.students.toLocaleString()} icon={Users} trend={12} color="[#006A8E]" />
-        <StatCard label="Applications" value={MOCK_STATS.applications.toLocaleString()} icon={FileText} trend={8} color="accent" />
-        <StatCard label="Pending" value={MOCK_STATS.pending} icon={Clock} color="warning" />
-        <StatCard label="Approved" value={MOCK_STATS.approved.toLocaleString()} icon={CheckCircle2} trend={15} color="success" />
-        <StatCard label="Rejected" value={MOCK_STATS.rejected} icon={XCircle} color="danger" />
+        <StatCard label="Students" value={stats.students.toLocaleString()} icon={Users} trend={0} color="[#006A8E]" />
+        <StatCard label="Applications" value={stats.applications.toLocaleString()} icon={FileText} trend={0} color="accent" />
+        <StatCard label="Pending" value={stats.pending} icon={Clock} color="warning" />
+        <StatCard label="Approved" value={stats.approved.toLocaleString()} icon={CheckCircle2} trend={0} color="success" />
+        <StatCard label="Rejected" value={stats.rejected} icon={XCircle} color="danger" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 p-6 glass border border-white/5 rounded-2xl">
@@ -167,7 +307,7 @@ const DistrictAdminPanel = () => {
         <div className="p-6 glass border border-white/5 rounded-2xl">
           <h3 className="text-sm font-bold text-text-1 mb-4">Recent Activity</h3>
           <div className="space-y-3">
-            {ACTIVITY_FEED.map((a, i) => (
+            {activities.length > 0 ? activities.map((a, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-bg-base/50 border border-white/5">
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${a.type === 'new' ? 'bg-accent' : a.type === 'approved' ? 'bg-success' : a.type === 'flagged' ? 'bg-warning' : 'bg-danger'}`} />
                 <div>
@@ -175,7 +315,7 @@ const DistrictAdminPanel = () => {
                   <p className="text-[10px] text-text-3 mt-0.5">{a.time}</p>
                 </div>
               </div>
-            ))}
+            )) : <p className="text-center text-text-3 text-[10px] py-4 uppercase font-bold tracking-widest">No recent activity</p>}
           </div>
         </div>
       </div>
@@ -191,10 +331,10 @@ const DistrictAdminPanel = () => {
                 <Flag size={14} className="text-warning" />
                 <div>
                   <p className="text-sm font-bold text-text-1">{a.name}</p>
-                  <p className="text-[10px] text-text-3">{a.id} · {a.type} · {a.amount}</p>
+                  <p className="text-[10px] text-text-3">{a.id} · {a.academicInfo?.course} · Score: {a.aiScore}%</p>
                 </div>
               </div>
-              <button onClick={() => { setSelectedApp(a); setActiveTab('applications'); }} className="text-xs font-bold text-[#006A8E] hover:underline">Review →</button>
+              <button onClick={() => { setSelectedApp(a); setActiveTab('applications'); }} className="text-xs font-bold text-[#006A8E] hover:underline">Review Details →</button>
             </div>
           ))}
         </div>
@@ -230,10 +370,70 @@ const DistrictAdminPanel = () => {
             </div>
             {selectedApp.status === 'Pending' && (
               <div className="flex gap-3">
-                <button onClick={() => handleAppAction(selectedApp.id, 'approve')} className="flex-1 h-12 bg-success text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-success/90 transition-all"><CheckCircle2 size={18}/> Approve</button>
-                <button onClick={() => handleAppAction(selectedApp.id, 'reject')} className="flex-1 h-12 bg-danger text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-danger/90 transition-all"><XCircle size={18}/> Reject</button>
+                <button onClick={() => handleAppAction(selectedApp.id, selectedApp.userId, selectedApp.type, 'approve')} className="flex-1 h-12 bg-success text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-success/90 transition-all"><CheckCircle2 size={18}/> Approve Application</button>
+                <div className="flex-1 flex flex-col gap-2">
+                    <button onClick={() => { if(!remark) { alert("Please provide a reason for rejection."); return; } handleAppAction(selectedApp.id, selectedApp.userId, selectedApp.type, 'reject', remark); }} className="w-full h-12 bg-danger text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-danger/90 transition-all"><XCircle size={18}/> Reject</button>
+                </div>
               </div>
             )}
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="p-6 glass border border-white/5 rounded-2xl">
+                  <h4 className="text-sm font-bold text-text-1 mb-4 border-b border-white/5 pb-2">Personal & Family Details</h4>
+                  <div className="space-y-3">
+                      {[
+                          ['Father\'s Name', selectedApp.personalInfo?.fatherName],
+                          ['Mother\'s Name', selectedApp.personalInfo?.motherName],
+                          ['Category', selectedApp.personalInfo?.category],
+                          ['Email', selectedApp.personalInfo?.email],
+                          ['Address', selectedApp.personalInfo?.address],
+                          ['District', selectedApp.personalInfo?.district],
+                          ['Pin Code', selectedApp.personalInfo?.pinCode]
+                      ].map(([l, v], i) => (
+                          <div key={i} className="flex justify-between items-center"><span className="text-[10px] text-text-3 font-bold uppercase">{l}</span><span className="text-xs font-semibold text-text-1">{v || 'N/A'}</span></div>
+                      ))}
+                  </div>
+              </div>
+              <div className="p-6 glass border border-white/5 rounded-2xl">
+                  <h4 className="text-sm font-bold text-text-1 mb-4 border-b border-white/5 pb-2">Academic & AI Insights</h4>
+                  <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-accent/5 rounded-xl border border-accent/20">
+                          <div><p className="text-[10px] text-accent font-bold uppercase">AI Eligibility Score</p><p className="text-xl font-extrabold text-accent">{selectedApp.aiScore}%</p></div>
+                          <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${selectedApp.aiScore > 75 ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                              {selectedApp.aiScore > 75 ? 'Strong Match' : 'Review Required'}
+                          </div>
+                      </div>
+                      <div className="space-y-2">
+                          {[
+                              ['Course', selectedApp.academicInfo?.course],
+                              ['Percentage', `${selectedApp.academicInfo?.percentage}%`],
+                              ['College', selectedApp.academicInfo?.instName],
+                              ['Admission No', selectedApp.academicInfo?.admissionNo]
+                          ].map(([l, v], i) => (
+                              <div key={i} className="flex justify-between items-center"><span className="text-[10px] text-text-3 font-bold uppercase">{l}</span><span className="text-xs font-semibold text-text-1">{v || 'N/A'}</span></div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div className="p-6 glass border border-white/5 rounded-2xl">
+              <h4 className="text-sm font-bold text-text-1 mb-4 border-b border-white/5 pb-2">Uploaded Documents</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {selectedApp.docs.map((d, i) => (
+                      <div key={i} className="p-4 bg-bg-base/50 rounded-xl border border-white/5 flex flex-col items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent"><FileText size={20}/></div>
+                          <div className="text-center">
+                              <p className="text-[10px] font-bold text-text-1 truncate w-24">{d.type}</p>
+                              <div className="flex items-center justify-center gap-2 mt-2">
+                                  <a href={d.url} target="_blank" rel="noreferrer" className="text-[9px] text-[#006A8E] hover:underline flex items-center gap-1"><ExternalLink size={10}/> Preview</a>
+                                  <button className="w-5 h-5 rounded-md border border-white/10 flex items-center justify-center hover:bg-success/20 hover:border-success/40 transition-all text-text-3 hover:text-success"><CheckCircle2 size={12}/></button>
+                              </div>
+                          </div>
+                      </div>
+                  ))}
+              </div>
           </div>
         </div>
       ) : (
@@ -258,7 +458,14 @@ const DistrictAdminPanel = () => {
                     <td className="px-5 py-4 text-xs font-bold text-text-1">{a.amount}</td>
                     <td className="px-5 py-4"><StatusBadge status={a.status}/></td>
                     <td className="px-5 py-4 text-xs text-text-3">{a.date}</td>
-                    <td className="px-5 py-4"><button onClick={() => setSelectedApp(a)} className="p-2 rounded-lg hover:bg-white/5 text-text-3 hover:text-text-1"><Eye size={16}/></button></td>
+                    <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setSelectedApp(a)} className="p-2 rounded-lg hover:bg-white/5 text-text-3 hover:text-text-1"><Eye size={16}/></button>
+                            <button onClick={() => { setDocSearchTerm(a.name); setActiveTab('documents'); }} className="flex items-center gap-1 px-3 py-1.5 bg-accent/5 border border-accent/20 rounded-lg text-accent text-[10px] font-bold hover:bg-accent hover:text-white transition-all">
+                                <ShieldCheck size={12}/> Docs
+                            </button>
+                        </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -270,33 +477,80 @@ const DistrictAdminPanel = () => {
     </div>
   );
 
-  const renderDocuments = () => (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-heading font-extrabold text-white">Document <span className="text-[#006A8E]">Verification</span></h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {docs.map(d => (
-          <div key={d.id} className={`p-5 glass border rounded-2xl transition-all ${d.flagged ? 'border-warning/30 bg-warning/5' : 'border-white/5'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-text-1">{d.student}</span>
-              {d.flagged && <span className="text-[10px] font-bold text-warning flex items-center gap-1"><AlertTriangle size={12}/> Suspicious</span>}
+  const renderDocuments = () => {
+    const filteredDocs = docs.filter(d => 
+        d.student.toLowerCase().includes(docSearchTerm.toLowerCase()) || 
+        d.type.toLowerCase().includes(docSearchTerm.toLowerCase())
+    );
+
+    return (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <h2 className="text-2xl font-heading font-extrabold text-white">Document <span className="text-[#006A8E]">Verification</span></h2>
+                {docSearchTerm && (
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-[10px] text-text-3 font-bold uppercase tracking-wider">Filtering for: <span className="text-accent">{docSearchTerm}</span></p>
+                        <button onClick={() => setDocSearchTerm('')} className="text-[9px] text-danger hover:underline font-bold font-mono">[Clear Filter]</button>
+                    </div>
+                )}
             </div>
-            <p className="text-sm font-bold text-text-1 mb-1">{d.type}</p>
-            {d.aiTag && <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1 mb-3"><Sparkles size={10}/>{d.aiTag}</span>}
-            <div className="flex items-center justify-between mt-4">
-              <StatusBadge status={d.status} />
-              <div className="flex gap-2">
-                {d.status === 'Pending' && <>
-                  <button onClick={() => handleDocAction(d.id, 'verify')} className="px-3 py-1.5 bg-success/10 text-success rounded-lg text-[10px] font-bold hover:bg-success/20 transition-all">Verify</button>
-                  <button onClick={() => handleDocAction(d.id, 'reject')} className="px-3 py-1.5 bg-danger/10 text-danger rounded-lg text-[10px] font-bold hover:bg-danger/20 transition-all">Reject</button>
-                </>}
-                <button className="p-1.5 rounded-lg hover:bg-white/5 text-text-3"><Download size={14}/></button>
-              </div>
-            </div>
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3" size={16} /><input value={docSearchTerm} onChange={e => setDocSearchTerm(e.target.value)} placeholder="Search student or doc type..." className="h-10 pl-10 pr-4 bg-bg-base border border-border-default rounded-xl text-xs text-text-1 focus:border-accent/40 outline-none w-56" /></div>
           </div>
-        ))}
-      </div>
-    </div>
-  );
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDocs.map(d => (
+              <div key={d.id} className={`p-5 glass border rounded-2xl transition-all relative overflow-hidden ${d.flagged ? 'border-warning/30 bg-warning/5' : 'border-white/5'} ${verifyingDocId === d.id ? 'opacity-80' : ''}`}>
+                {verifyingDocId === d.id && <div className="absolute inset-0 z-10 scan-overlay" />}
+                
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-text-1">{d.student}</span>
+                  {d.flagged && <span className="text-[10px] font-bold text-warning flex items-center gap-1"><AlertTriangle size={12}/> High Risk</span>}
+                </div>
+                <p className="text-sm font-bold text-text-1 mb-1">{d.type}</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {d.aiTag && <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1"><Sparkles size={10}/>{d.aiTag}</span>}
+                    {aiDocResults[d.id] && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${aiDocResults[d.id].verified ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                            {aiDocResults[d.id].verified ? 'AI Verified' : 'AI Rejected'}
+                        </span>
+                    )}
+                </div>
+
+                {aiDocResults[d.id] && !aiDocResults[d.id].verified && (
+                    <div className="p-3 bg-danger/5 border border-danger/10 rounded-xl mb-4 text-[9px] text-danger font-medium">
+                        AI Reason: {aiDocResults[d.id].summary}
+                    </div>
+                )}
+
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
+                  <StatusBadge status={d.status} />
+                  <div className="flex gap-2">
+                    {d.status === 'Pending' && (
+                        <button 
+                            disabled={verifyingDocId === d.id}
+                            onClick={() => handleAIVerify(d)} 
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${verifyingDocId === d.id ? 'bg-bg-elevated' : 'bg-[#006A8E]/10 text-[#006A8E] hover:bg-[#006A8E] hover:text-white'}`}
+                        >
+                            <Sparkles size={12}/> {verifyingDocId === d.id ? 'Scanning...' : 'Verify with AI'}
+                        </button>
+                    )}
+                    <a href={d.url} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg hover:bg-white/5 text-text-3 transition-colors"><Download size={14}/></a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {filteredDocs.length === 0 && (
+              <div className="p-20 text-center glass border border-white/5 rounded-3xl">
+                  <ShieldCheck size={40} className="mx-auto mb-4 text-text-3 opacity-20"/>
+                  <h3 className="text-sm font-bold text-text-3 uppercase tracking-widest leading-relaxed">No matching documents found</h3>
+                  <button onClick={() => setDocSearchTerm('')} className="mt-4 text-xs font-bold text-accent hover:underline">Show All Documents</button>
+              </div>
+          )}
+        </div>
+    );
+  };
 
   const renderStudents = () => (
     <div className="space-y-6 animate-fade-in">
@@ -322,54 +576,78 @@ const DistrictAdminPanel = () => {
     </div>
   );
 
-  const renderLoans = () => (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-heading font-extrabold text-white">Loan <span className="text-[#006A8E]">Approval Panel</span></h2>
-      {apps.filter(a => a.type === 'Loan').map(a => (
-        <div key={a.id} className="p-6 glass border border-white/5 rounded-2xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">{a.name[0]}</div><div><p className="text-sm font-bold text-text-1">{a.name}</p><p className="text-[10px] text-text-3">{a.id}</p></div></div>
-            <StatusBadge status={a.status} />
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {[['Amount',a.amount],['CIBIL',a.cibil],['AI Rec.',a.cibil>=700?'✅ Recommended':'⚠️ Review'],['Date',a.date]].map(([l,v],i) => (
-              <div key={i} className="p-3 bg-bg-base/50 rounded-xl border border-white/5"><p className="text-[9px] text-text-3 font-bold uppercase">{l}</p><p className="text-xs font-bold text-text-1 mt-0.5">{v}</p></div>
-            ))}
-          </div>
-          {a.status === 'Pending' && (
-            <div className="flex gap-3">
-              <button onClick={() => handleAppAction(a.id, 'approve')} className="flex-1 h-10 bg-success/10 text-success rounded-xl text-xs font-bold hover:bg-success/20 transition-all flex items-center justify-center gap-2"><CheckCircle2 size={14}/> Approve Loan</button>
-              <button onClick={() => handleAppAction(a.id, 'reject')} className="flex-1 h-10 bg-danger/10 text-danger rounded-xl text-xs font-bold hover:bg-danger/20 transition-all flex items-center justify-center gap-2"><XCircle size={14}/> Reject</button>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
 
   const renderScholarships = () => (
     <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-heading font-extrabold text-white">Scholarship <span className="text-[#006A8E]">Management</span></h2>
-      {MOCK_SCHEMES.map(s => (
-        <div key={s.id} className="p-6 glass border border-white/5 rounded-2xl">
-          <div className="flex items-center justify-between mb-4">
-            <div><p className="text-sm font-bold text-text-1">{s.name}</p><p className="text-[10px] text-text-3">Deadline: {s.deadline}</p></div>
-            <span className="text-xs font-bold text-accent">{s.filled}/{s.slots} filled</span>
-          </div>
-          <div className="w-full bg-bg-base rounded-full h-2 mb-4"><div className="bg-gradient-to-r from-accent to-[#006A8E] h-2 rounded-full transition-all" style={{ width: `${(s.filled/s.slots)*100}%` }}/></div>
-          <div className="flex gap-3">
-            <button className="flex-1 h-10 bg-[#006A8E]/10 text-[#006A8E] rounded-xl text-xs font-bold hover:bg-[#006A8E]/20 transition-all flex items-center justify-center gap-2"><UserCheck size={14}/> Auto-Match Students</button>
-            <button className="flex-1 h-10 bg-accent/10 text-accent rounded-xl text-xs font-bold hover:bg-accent/20 transition-all flex items-center justify-center gap-2"><Star size={14}/> Mark Priority</button>
-          </div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-heading font-extrabold text-white">Scholarship <span className="text-[#006A8E]">Management</span></h2>
+        <div className="flex bg-bg-surface border border-white/5 p-1 rounded-xl">
+            <button className="px-4 py-1.5 rounded-lg text-[10px] font-bold bg-accent text-white shadow-lg shadow-accent/20">All Schemes</button>
+            <button className="px-4 py-1.5 rounded-lg text-[10px] font-bold text-text-3 hover:text-text-1 transition-all">Verified Only</button>
         </div>
-      ))}
-      <h3 className="text-sm font-bold text-text-1 mt-6">Scholarship Applications</h3>
-      {apps.filter(a => a.type === 'Scholarship').map(a => (
-        <div key={a.id} className="flex items-center justify-between p-4 glass border border-white/5 rounded-xl">
-          <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-bold text-sm">{a.name[0]}</div><div><p className="text-sm font-bold text-text-1">{a.name}</p><p className="text-[10px] text-text-3">{a.amount}</p></div></div>
-          <div className="flex items-center gap-3"><StatusBadge status={a.status}/>{a.status==='Pending'&&<><button onClick={()=>handleAppAction(a.id,'approve')} className="text-success text-xs font-bold hover:underline">Approve</button><button onClick={()=>handleAppAction(a.id,'reject')} className="text-danger text-xs font-bold hover:underline">Reject</button></>}</div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+            { label: 'Active Schemes', value: 12, icon: ScholarshipIcon, color: 'accent' },
+            { label: 'Total Fund', value: '₹4.2 Cr', icon: BadgeDollarSign, color: 'success' },
+            { label: 'Avg Eligibility', value: '82%', icon: BarChart3, color: '[#006A8E]' }
+        ].map((s, i) => (
+            <div key={i} className="p-4 glass border border-white/5 rounded-2xl flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-xl bg-${s.color}/10 flex items-center justify-center text-${s.color}`}><s.icon size={20}/></div>
+                <div><p className="text-lg font-bold text-text-1">{s.value}</p><p className="text-[10px] text-text-3 font-bold uppercase">{s.label}</p></div>
+            </div>
+        ))}
+      </div>
+
+      <h3 className="text-sm font-bold text-text-1 mt-6">Application Pipeline</h3>
+      {apps.filter(a => a.type === 'Scholarship').length > 0 ? (
+        <div className="glass border border-white/5 rounded-2xl overflow-hidden">
+          <table className="w-full text-left font-body">
+            <thead>
+              <tr className="border-b border-white/5 bg-white/[0.02]">
+                {['Student','Scheme/Course','Status','AI Match','Actions'].map((h, i) => (
+                  <th key={i} className="px-5 py-3 text-[10px] font-bold text-text-3 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {apps.filter(a => a.type === 'Scholarship').map(a => (
+                <tr key={a.id} className="border-b border-white/5 hover:bg-white/[0.01] transition-colors">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold text-xs">{a.name[0]}</div>
+                      <div><p className="text-xs font-bold text-text-1">{a.name}</p><p className="text-[9px] text-text-3 font-mono">{a.id}</p></div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <p className="text-xs font-semibold text-text-1">{a.personalInfo?.scheme || 'General Merit'}</p>
+                    <p className="text-[9px] text-text-3">{a.academicInfo?.course}</p>
+                  </td>
+                  <td className="px-5 py-4"><StatusBadge status={a.status}/></td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 w-12 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-accent transition-all" style={{ width: `${a.aiScore}%` }}/></div>
+                      <span className="text-[10px] font-bold text-text-1">{a.aiScore}%</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => { setSelectedApp(a); setActiveTab('applications'); }} className="p-2 rounded-lg hover:bg-white/5 text-accent"><Eye size={16}/></button>
+                      <button onClick={() => { setDocSearchTerm(a.name); setActiveTab('documents'); }} className="p-2 rounded-lg hover:bg-white/5 text-[#006A8E]"><ShieldCheck size={16}/></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ))}
+      ) : (
+        <div className="p-12 glass border border-white/5 rounded-2xl text-center">
+            <GraduationCap size={40} className="text-text-3 mx-auto mb-4 opacity-20"/>
+            <p className="text-sm font-bold text-text-3 uppercase tracking-widest">No active scholarship applications</p>
+        </div>
+      )}
     </div>
   );
 
@@ -392,7 +670,7 @@ const DistrictAdminPanel = () => {
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-2xl font-heading font-extrabold text-white">Reports & <span className="text-[#006A8E]">Analytics</span></h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[['Approval Rate',`${Math.round((MOCK_STATS.approved/MOCK_STATS.applications)*100)}%`,'success'],['Rejection Rate',`${Math.round((MOCK_STATS.rejected/MOCK_STATS.applications)*100)}%`,'danger'],['Pending Rate',`${Math.round((MOCK_STATS.pending/MOCK_STATS.applications)*100)}%`,'warning']].map(([l,v,c],i)=>(
+        {[['Approval Rate',`${stats.applications > 0 ? Math.round((stats.approved/stats.applications)*100) : 0}%`,'success'],['Rejection Rate',`${stats.applications > 0 ? Math.round((stats.rejected/stats.applications)*100) : 0}%`,'danger'],['Pending Rate',`${stats.applications > 0 ? Math.round((stats.pending/stats.applications)*100) : 0}%`,'warning']].map(([l,v,c],i)=>(
           <div key={i} className="p-6 glass border border-white/5 rounded-2xl text-center">
             <p className={`text-4xl font-heading font-extrabold text-${c}`}>{v}</p>
             <p className="text-[11px] font-bold text-text-3 uppercase tracking-wider mt-2">{l}</p>
@@ -443,7 +721,6 @@ const DistrictAdminPanel = () => {
       case 'applications': return renderApplications();
       case 'documents': return renderDocuments();
       case 'students': return renderStudents();
-      case 'loans': return renderLoans();
       case 'scholarships': return renderScholarships();
       case 'notifications': return renderNotifications();
       case 'reports': return renderReports();

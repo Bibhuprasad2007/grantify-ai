@@ -481,6 +481,9 @@ const ApplicationForm = ({ onBackToDashboard }) => {
         await setDoc(doc(db, "scholarshipApplications", user.uid), fileUrls, { merge: true });
       }
 
+      // Final confirmation to ensure data is visible in District Panel
+      console.log("Scholarship Application submitted for Aadhaar/UID:", user.uid);
+      
       setIsSuccess(true);
     } catch (error) {
       console.error("Submission Error:", error);
@@ -508,7 +511,7 @@ const ApplicationForm = ({ onBackToDashboard }) => {
           <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-success/30 shadow-lg shadow-success/10 animate-scale-pop">
             <CheckCircle2 size={40} className="text-success" />
           </div>
-          <h1 className="text-3xl font-heading font-extrabold text-text-1 mb-2">Application Submitted Successfully 🎉</h1>
+          <h1 className="text-3xl font-heading font-extrabold text-text-1 mb-2">Application Applied Successfully 🎉</h1>
           <p className="text-text-3 font-semibold uppercase tracking-widest text-sm mb-10">Your application is now being processed.</p>
           
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-left mb-12">
@@ -688,10 +691,6 @@ const ApplicationForm = ({ onBackToDashboard }) => {
                </div>
             </FormSection>
 
-            <div className="p-6 rounded-2xl bg-accent/5 border border-accent/20 mb-10 flex gap-4 items-center animate-pulse">
-              <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent shrink-0 font-bold">i</div>
-              <p className="text-xs text-text-2 font-medium">Please ensure the bank account is <span className="text-accent font-bold">Aadhaar Linked</span> for Direct Benefit Transfer.</p>
-            </div>
           </div>
         )}
 
@@ -727,9 +726,9 @@ const ApplicationForm = ({ onBackToDashboard }) => {
                 ${(isSubmitting || !isStepComplete(1) || !isStepComplete(2) || !isStepComplete(3)) ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? (
-                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Uploading to Firebase...</>
+                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
               ) : (
-                <>Submit <Sparkles size={18} /></>
+                <>Apply <Sparkles size={18} /></>
               )}
             </button>
           )}
