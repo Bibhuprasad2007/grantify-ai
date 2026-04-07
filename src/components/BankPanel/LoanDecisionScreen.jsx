@@ -1,134 +1,164 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  ChevronRight, Star, CheckCircle2, XCircle, 
-  RefreshCw, Send 
+  ArrowLeft, CheckCircle, XCircle, Shield, FileText, 
+  TrendingUp, Download, AlertTriangle, User, Landmark, 
+  MapPin, GraduationCap, Briefcase, Activity
 } from 'lucide-react';
-
-const RiskBadge = ({ risk }) => {
-  const map = {
-    Low: 'bg-success/10 text-success border-success/20',
-    Medium: 'bg-warning/10 text-warning border-warning/20',
-    High: 'bg-danger/10 text-danger border-danger/20',
-  };
-  return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${map[risk]}`}>
-      <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${risk === 'Low' ? 'bg-success' : risk === 'Medium' ? 'bg-warning' : 'bg-danger'}`} />
-      <span className="text-[10px] font-bold uppercase tracking-wider">{risk} Risk</span>
-    </div>
-  );
-};
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 const LoanDecisionScreen = ({ loan, onBack }) => {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [decisionNote, setDecisionNote] = useState('');
+
+  if (!loan) return null;
+
+  const handleDecision = async (newStatus) => {
+    setIsUpdating(true);
+    try {
+      const collectionName = loan.collection || 'loanApplications';
+      const loanRef = doc(db, collectionName, loan.id);
+      await updateDoc(loanRef, {
+        status: newStatus,
+        bankNote: decisionNote,
+        decisionAt: serverTimestamp(),
+        lastUpdatedBy: 'Bank Officer (UCO-756181)'
+      });
+      alert(`Loan application successfully ${newStatus}!`);
+      onBack();
+    } catch (error) {
+      console.error("Error updating loan:", error);
+      alert("Failed to update loan status. Please check your connection.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
-       <button onClick={onBack} className="flex items-center gap-2 text-text-3 hover:text-text-1 text-sm font-bold transition-all">
-         <ChevronRight size={16} className="rotate-180" /> Back to List
-       </button>
-       
-       <div className="p-8 glass border border-white/5 rounded-3xl relative overflow-hidden">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-success/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-         
-         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-           <div className="flex items-center gap-5">
-             <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center text-success font-bold text-2xl">
-               {loan.name[0]}
-             </div>
-             <div>
-               <h3 className="text-2xl font-heading font-extrabold text-white">{loan.name}</h3>
-               <div className="flex gap-3 mt-1 text-text-3 text-xs">
-                 <span>App ID: {loan.id}</span>
-                 <span>•</span>
-                 <span className="text-success font-bold">District Approved</span>
+    <div className="space-y-6 animate-fade-in text-text-1">
+      {/* Header Actions */}
+      <div className="flex items-center justify-between bg-white/[0.02] p-4 rounded-3xl border border-white/5 backdrop-blur-md">
+        <button onClick={onBack} className="flex items-center gap-2 text-text-3 hover:text-white transition-all font-bold text-xs uppercase tracking-widest px-4 py-2 hover:bg-white/5 rounded-xl">
+          <ArrowLeft size={16} /> Back to Pipeline
+        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-success/5 border border-success/20 rounded-full">
+            <Shield size={14} className="text-success" />
+            <span className="text-[10px] font-black text-success uppercase">Secured by AI-Audit</span>
+          </div>
+          <button className="p-2.5 text-text-3 hover:text-white bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all">
+             <Download size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT COLUMN: Student Profile & Risk Summary */}
+        <div className="lg:col-span-2 space-y-6 text-nowrap">
+          <div className="p-8 glass border border-white/5 rounded-[40px] relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-success/5 blur-[100px] -mr-32 -mt-32" />
+            
+            <div className="flex flex-col md:flex-row md:items-center gap-8 relative z-10">
+               <div className="w-24 h-24 rounded-3xl bg-bg-base border-2 border-white/5 flex items-center justify-center text-3xl font-black text-success shadow-2xl">
+                 {loan.name?.[0] || 'S'}
                </div>
+               <div className="flex-1">
+                 <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-3xl font-heading font-black text-white">{loan.name}</h2>
+                    <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-black text-text-3 border border-white/10 uppercase tracking-widest">ID: {loan.id}</span>
+                 </div>
+                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-medium text-text-3">
+                    <span className="flex items-center gap-1.5"><MapPin size={14} className="text-success" /> {loan.district || 'Bhadrak'}, Odisha</span>
+                    <span className="flex items-center gap-1.5"><GraduationCap size={14} className="text-success" /> {loan.course || 'B.Tech CS'}</span>
+                    <span className="flex items-center gap-1.5"><Activity size={14} className="text-success" /> Applied: 24 Mar</span>
+                 </div>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
+               {[
+                 { label: 'Requested Amount', value: loan.amount, color: 'text-white' },
+                 { label: 'CIBIL Score', value: loan.cibil || 742, color: 'text-success' },
+                 { label: 'AI Risk Level', value: loan.aiRisk || 'Low Risk', color: loan.aiRisk === 'High' ? 'text-danger' : 'text-success' },
+               ].map(stat => (
+                 <div key={stat.label} className="p-5 bg-white/[0.03] border border-white/5 rounded-3xl group-hover:bg-white/[0.05] transition-all">
+                    <p className="text-[10px] font-bold text-text-3 uppercase tracking-[0.2em] mb-2">{stat.label}</p>
+                    <p className={`text-2xl font-black font-heading ${stat.color}`}>{stat.value}</p>
+                 </div>
+               ))}
+            </div>
+          </div>
+
+          <div className="p-8 glass border border-white/5 rounded-[40px]">
+             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-3">
+               <Shield size={20} className="text-success" /> District Official Audit
+             </h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                   <p className="text-xs font-bold text-text-3 uppercase tracking-widest">Verification Status</p>
+                   <div className="space-y-3">
+                      {[
+                        { label: 'Income Certificate', status: 'Auto-Verified' },
+                        { label: 'Residence Proof', status: 'In-Person Audit' },
+                        { label: 'Credit History', status: 'AI Cleared' },
+                      ].map(v => (
+                        <div key={v.label} className="flex items-center justify-between p-3 bg-bg-base/50 rounded-2xl border border-white/5">
+                           <span className="text-xs font-medium text-text-2">{v.label}</span>
+                           <CheckCircle size={14} className="text-success" />
+                        </div>
+                      ))}
+                   </div>
+                </div>
+                <div className="p-6 bg-success/5 border border-success/10 rounded-3xl">
+                   <p className="text-[10px] font-black text-success uppercase tracking-widest mb-3">District Officer Note</p>
+                   <p className="text-xs text-text-2 italic leading-relaxed">"Student exhibits high commitment to academic excellence. Family background verified via Ration Card records. Highly recommended for immediate sanctioning."</p>
+                </div>
              </div>
-           </div>
-           <div className="flex gap-3">
-              <RiskBadge risk={loan.aiRisk} />
-              <div className="px-4 py-2 bg-bg-base/50 border border-white/5 rounded-xl flex items-center gap-2">
-                <Star size={14} className="text-warning fill-warning" />
-                <span className="text-xs font-bold text-warning">CIBIL: {loan.cibil}</span>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Action Panel */}
+        <div className="space-y-6">
+           <div className="p-8 glass border border-white/5 rounded-[40px] sticky top-24">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-3">
+                < Landmark size={20} className="text-success" /> Sanction Control
+              </h3>
+              
+              <div className="space-y-6">
+                 <div>
+                    <label className="text-[10px] font-black text-text-3 uppercase tracking-widest mb-2 block">Officer Review Note</label>
+                    <textarea 
+                      value={decisionNote}
+                      onChange={e => setDecisionNote(e.target.value)}
+                      placeholder="Enter internal review notes or sanction conditions..."
+                      className="w-full h-32 p-4 bg-bg-base border border-white/5 rounded-2xl text-xs text-text-1 resize-none outline-none focus:border-success/30 transition-all font-medium"
+                    />
+                 </div>
+
+                 <div className="space-y-3">
+                    <button 
+                      onClick={() => handleDecision('Approved')}
+                      disabled={isUpdating}
+                      className="w-full h-14 bg-success text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-success/20 hover:bg-success/90 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                    >
+                      {isUpdating ? 'Executing...' : 'Approve & Sanction'} <CheckCircle size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleDecision('Rejected')}
+                      disabled={isUpdating}
+                      className="w-full h-14 bg-white/5 text-danger font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-danger/20 hover:bg-danger/10 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                    >
+                      Reject Application <XCircle size={18} />
+                    </button>
+                 </div>
+
+                 <p className="text-[9px] text-text-3 text-center uppercase font-bold tracking-widest leading-relaxed">
+                   Sanctioning will notify the student and initiate the digital signature workflow via mobile ID.
+                 </p>
               </div>
            </div>
-         </div>
-
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-           <div className="space-y-6">
-             <section>
-               <h4 className="text-[10px] font-bold text-text-3 uppercase tracking-widest mb-3">Applicant Overview</h4>
-               <div className="grid grid-cols-2 gap-3">
-                 {[
-                   ['Loan Amount', loan.amount],
-                   ['Education', 'B.Tech CS'],
-                   ['Family Income', '₹4,50,000/yr'],
-                   ['District Remark', 'Highly Recommended'],
-                 ].map(([l, v], i) => (
-                   <div key={i} className="p-4 bg-bg-base/40 rounded-2xl border border-white/5">
-                     <p className="text-[10px] text-text-3 font-bold uppercase">{l}</p>
-                     <p className="text-sm font-bold text-text-1 mt-1">{v}</p>
-                   </div>
-                 ))}
-               </div>
-             </section>
-
-             <section>
-               <h4 className="text-[10px] font-bold text-text-3 uppercase tracking-widest mb-3">AI Risk Assessment</h4>
-               <div className="p-5 bg-bg-base/40 rounded-2xl border border-white/5">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="flex-1 bg-white/5 rounded-full h-2">
-                      <div className={`h-2 rounded-full ${loan.aiRisk === 'Low' ? 'bg-success w-[90%]' : 'bg-warning w-[60%]'}`} />
-                    </div>
-                    <span className="text-xs font-bold text-text-1">{loan.aiRisk === 'Low' ? 'Safe' : 'Watch'}</span>
-                  </div>
-                  <p className="text-xs text-text-3 leading-relaxed">
-                    AI Prediction: Application shows 94% repayment probability based on high credit score and stable family income. Recommended for immediate approval at standard interest rates.
-                  </p>
-               </div>
-             </section>
-           </div>
-
-           <div className="space-y-6">
-             <section>
-               <h4 className="text-[10px] font-bold text-text-3 uppercase tracking-widest mb-3">Decision Execution</h4>
-               <div className="p-6 bg-success/5 border border-success/20 rounded-2xl space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-text-3 uppercase block mb-1.5 ml-1">Sanctioned Amount</label>
-                    <input defaultValue={loan.amount} className="w-full bg-bg-base border border-white/10 h-11 rounded-xl px-4 text-sm font-bold text-white outline-none focus:border-success/50" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-text-3 uppercase block mb-1.5 ml-1">Interest Rate (%)</label>
-                      <input defaultValue="8.5" className="w-full bg-bg-base border border-white/10 h-11 rounded-xl px-4 text-sm font-bold text-white outline-none focus:border-success/50" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-text-3 uppercase block mb-1.5 ml-1">Tenure (Years)</label>
-                      <input defaultValue="7" className="w-full bg-bg-base border border-white/10 h-11 rounded-xl px-4 text-sm font-bold text-white outline-none focus:border-success/50" />
-                    </div>
-                  </div>
-                  <div className="flex gap-3 pt-2">
-                    <button className="flex-1 h-12 bg-success text-white font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-success/90 transition-all shadow-lg shadow-success/20 transition-transform hover:scale-[1.02]">
-                      <CheckCircle2 size={18} /> Approve & Disburse
-                    </button>
-                    <button className="w-12 h-12 bg-bg-base text-text-3 hover:text-danger rounded-2xl flex items-center justify-center border border-white/5 transition-all outline-none">
-                      <XCircle size={20} />
-                    </button>
-                  </div>
-               </div>
-             </section>
-
-             <section>
-                <h4 className="text-[10px] font-bold text-text-3 uppercase tracking-widest mb-3">Actions</h4>
-                <div className="flex gap-3">
-                   <button className="flex-1 h-10 bg-white/5 text-text-1 text-xs font-bold rounded-xl border border-white/10 hover:bg-white/10 flex items-center justify-center gap-2 transition-all">
-                     <RefreshCw size={14} /> Request Re-Verification
-                   </button>
-                   <button className="flex-1 h-10 bg-white/5 text-text-1 text-xs font-bold rounded-xl border border-white/10 hover:bg-white/10 flex items-center justify-center gap-2 transition-all">
-                     <Send size={14} /> Clarify with District
-                   </button>
-                </div>
-             </section>
-           </div>
-         </div>
-       </div>
+        </div>
+      </div>
     </div>
   );
 };
