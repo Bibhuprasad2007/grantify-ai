@@ -515,7 +515,7 @@ const DistrictAdminPanel = () => {
                     <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                             <button onClick={() => setSelectedApp(a)} className="p-2 rounded-lg hover:bg-white/5 text-text-3 hover:text-text-1"><Eye size={16}/></button>
-                            <button onClick={() => { setDocSearchTerm(a.name); setActiveTab('documents'); }} className="flex items-center gap-1 px-3 py-1.5 bg-accent/5 border border-accent/20 rounded-lg text-accent text-[10px] font-bold hover:bg-accent hover:text-white transition-all">
+                            <button onClick={() => { setSelectedApp(a); setDocSearchTerm(a.name); setActiveTab('documents'); }} className="flex items-center gap-1 px-3 py-1.5 bg-accent/5 border border-accent/20 rounded-lg text-accent text-[10px] font-bold hover:bg-accent hover:text-white transition-all">
                                 <ShieldCheck size={12}/> Docs
                             </button>
                         </div>
@@ -542,15 +542,67 @@ const DistrictAdminPanel = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
                 <h2 className="text-2xl font-heading font-extrabold text-white">Document <span className="text-[#006A8E]">Verification</span></h2>
-                {docSearchTerm && (
+                {(docSearchTerm || selectedApp) && (
                     <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[10px] text-text-3 font-bold uppercase tracking-wider">Filtering for: <span className="text-accent">{docSearchTerm}</span></p>
-                        <button onClick={() => setDocSearchTerm('')} className="text-[9px] text-danger hover:underline font-bold font-mono">[Clear Filter]</button>
+                        <p className="text-[10px] text-text-3 font-bold uppercase tracking-wider">Verifying: <span className="text-accent">{selectedApp?.name || docSearchTerm}</span></p>
+                        <button onClick={() => { setDocSearchTerm(''); setSelectedApp(null); }} className="text-[9px] text-danger hover:underline font-bold font-mono">[Clear & Show All]</button>
                     </div>
                 )}
             </div>
-            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3" size={16} /><input value={docSearchTerm} onChange={e => setDocSearchTerm(e.target.value)} placeholder="Search student or doc type..." className="h-10 pl-10 pr-4 bg-bg-base border border-border-default rounded-xl text-xs text-text-1 focus:border-accent/40 outline-none w-56" /></div>
+            <div className="relative border-r border-white/5 pr-4 mr-2">
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setActiveTab('applications')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-text-3 text-[10px] font-bold hover:text-text-1">
+                        <ArrowLeft size={12} /> Back to Applications
+                    </button>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3" size={16} />
+                        <input value={docSearchTerm} onChange={e => { setDocSearchTerm(e.target.value); setSelectedApp(null); }} placeholder="Quick search document..." className="h-10 pl-10 pr-4 bg-bg-base border border-border-default rounded-xl text-xs text-text-1 focus:border-accent/40 outline-none w-56" />
+                    </div>
+                </div>
+            </div>
           </div>
+
+          {/* Student Application Data Summary for Context */}
+          {selectedApp && (
+            <div className="p-6 glass border border-accent/20 bg-accent/5 rounded-[1.5rem] animate-fade-up">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center text-accent font-extrabold text-xl shadow-lg border border-accent/40">{selectedApp.name[0]}</div>
+                        <div>
+                            <h4 className="text-lg font-bold text-text-1">{selectedApp.name}</h4>
+                            <p className="text-[10px] text-text-3 font-mono tracking-widest">{selectedApp.id} · {selectedApp.type}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[9px] font-extrabold text-text-3 uppercase tracking-[0.2em] mb-1">AI Trust Score</p>
+                        <div className="flex items-center gap-2">
+                            <div className="w-24 h-2 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${selectedApp.aiScore}%` }} /></div>
+                            <span className="text-sm font-mono font-extrabold text-accent">{selectedApp.aiScore}%</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest border-b border-white/5 pb-1 mb-2 italic">Personal & Family</p>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">FATHER</span><span className="text-[11px] font-semibold">{selectedApp.personalInfo?.fatherName || 'N/A'}</span></div>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">CATEGORY</span><span className="text-[11px] font-semibold">{selectedApp.personalInfo?.category || 'N/A'}</span></div>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">STATE/DIST</span><span className="text-[11px] font-semibold">{selectedApp.personalInfo?.state || 'N/A'}, {selectedApp.personalInfo?.district || 'N/A'}</span></div>
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest border-b border-white/5 pb-1 mb-2 italic">Academic Details</p>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">COURSE</span><span className="text-[11px] font-semibold text-accent">{selectedApp.academicInfo?.course || 'N/A'}</span></div>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">COLLEGE</span><span className="text-[11px] font-semibold truncate max-w-[150px]">{selectedApp.academicInfo?.instName || 'N/A'}</span></div>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">PERCENTAGE</span><span className="text-[11px] font-bold text-success">{selectedApp.academicInfo?.percentage || 'N/A'}%</span></div>
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest border-b border-white/5 pb-1 mb-2 italic">Financial Info</p>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">BANK</span><span className="text-[11px] font-semibold">{selectedApp.bankInfo?.bankName || 'N/A'}</span></div>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">ACC NO</span><span className="text-[11px] font-mono">{selectedApp.bankInfo?.accountNumber || 'N/A'}</span></div>
+                        <div className="flex justify-between"><span className="text-[10px] text-text-3 font-bold">IFSC</span><span className="text-[11px] font-mono">{selectedApp.bankInfo?.ifscCode || 'N/A'}</span></div>
+                    </div>
+                </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredDocs.map(d => (
@@ -598,8 +650,8 @@ const DistrictAdminPanel = () => {
           {filteredDocs.length === 0 && (
               <div className="p-20 text-center glass border border-white/5 rounded-3xl">
                   <ShieldCheck size={40} className="mx-auto mb-4 text-text-3 opacity-20"/>
-                  <h3 className="text-sm font-bold text-text-3 uppercase tracking-widest leading-relaxed">No matching documents found</h3>
-                  <button onClick={() => setDocSearchTerm('')} className="mt-4 text-xs font-bold text-accent hover:underline">Show All Documents</button>
+                  <h3 className="text-sm font-bold text-text-3 uppercase tracking-widest leading-relaxed">No docs for this student</h3>
+                  <button onClick={() => { setDocSearchTerm(''); setSelectedApp(null); }} className="mt-4 text-xs font-bold text-accent hover:underline">Show All Documents</button>
               </div>
           )}
         </div>
@@ -688,7 +740,7 @@ const DistrictAdminPanel = () => {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
                       <button onClick={() => { setSelectedApp(a); setActiveTab('applications'); }} className="p-2 rounded-lg hover:bg-white/5 text-accent"><Eye size={16}/></button>
-                      <button onClick={() => { setDocSearchTerm(a.name); setActiveTab('documents'); }} className="p-2 rounded-lg hover:bg-white/5 text-[#006A8E]"><ShieldCheck size={16}/></button>
+                      <button onClick={() => { setSelectedApp(a); setDocSearchTerm(a.name); setActiveTab('documents'); }} className="p-2 rounded-lg hover:bg-white/5 text-[#006A8E]"><ShieldCheck size={16}/></button>
                     </div>
                   </td>
                 </tr>
