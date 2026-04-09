@@ -79,7 +79,7 @@ const LoanRequests = ({ loans = [], stats = {}, onReviewLoan }) => {
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
               placeholder="Search by ID or Student Name..." 
-              className="w-full h-12 pl-12 pr-4 bg-bg-surface/50 border border-white/5 rounded-2xl text-sm text-text-1 placeholder:text-text-3/50 outline-none focus:border-success/30 transition-all font-medium" 
+              className="w-full h-12 pl-12 pr-4 bg-bg-surface/50 border border-white/5 rounded-2xl text-sm text-text-1 placeholder:opacity-50 placeholder:text-text-3 outline-none focus:border-success/30 transition-all font-medium" 
             />
           </div>
           

@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   ClipboardList, Search, Filter, ArrowRight, Clock, 
   CheckCircle2, XCircle, FileEdit, GraduationCap, 
-  Landmark, ChevronRight, Calendar, BadgeDollarSign,
+  Landmark, ChevronRight, Calendar, IndianRupee,
   ShieldCheck, AlertCircle, UserCircle
 } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { useUser } from '../context/UserContext';
 
 const StatusBadge = ({ status }) => {
@@ -178,7 +178,7 @@ const ApplicationCard = ({ app, type, onViewDetails }) => {
         </div>
         <div className="p-4 rounded-2xl bg-bg-base/40 border border-white/5">
           <p className="text-[10px] font-bold text-text-3 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-            <BadgeDollarSign size={10} className="text-success"/> {isScholarship ? 'Expected Grant' : 'Requested Amount'}
+            <IndianRupee size={10} className="text-success"/> {isScholarship ? 'Expected Grant' : 'Requested Amount'}
           </p>
           <p className="text-sm font-bold text-text-1">
             {isScholarship ? '₹25,000' : `₹${Number(app.bankLoanInfo?.loanAmount || 0).toLocaleString()}`}
@@ -230,8 +230,8 @@ const ApplicationCard = ({ app, type, onViewDetails }) => {
 
 const ApplicationsPage = () => {
   const { user } = useUser();
-  const [scholarshipData, setScholarshipData] = useState(null);
-  const [loanData, setLoanData] = useState(null);
+  const [scholarshipApps, setScholarshipApps] = useState([]);
+  const [loanApps, setLoanApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedApp, setSelectedApp] = useState(null);
@@ -239,13 +239,15 @@ const ApplicationsPage = () => {
   useEffect(() => {
     if (!user?.uid) return;
 
-    const unsubSch = onSnapshot(doc(db, "scholarshipApplications", user.uid), (docSnap) => {
-      if (docSnap.exists()) setScholarshipData(docSnap.data());
+    const qSch = query(collection(db, "scholarshipApplications"), where("userId", "==", user.uid));
+    const unsubSch = onSnapshot(qSch, (snapshot) => {
+      setScholarshipApps(snapshot.docs.map(d => ({ ...d.data(), id: d.id, _type: 'Scholarship' })));
       setLoading(false);
     });
 
-    const unsubLoan = onSnapshot(doc(db, "loanApplications", user.uid), (docSnap) => {
-      if (docSnap.exists()) setLoanData(docSnap.data());
+    const qLoan = query(collection(db, "loanApplications"), where("userId", "==", user.uid));
+    const unsubLoan = onSnapshot(qLoan, (snapshot) => {
+      setLoanApps(snapshot.docs.map(d => ({ ...d.data(), id: d.id, _type: 'Loan' })));
     });
 
     return () => {
@@ -255,8 +257,8 @@ const ApplicationsPage = () => {
   }, [user?.uid]);
 
   const apps = [
-    ...(scholarshipData ? [{ ...scholarshipData, _type: 'Scholarship' }] : []),
-    ...(loanData ? [{ ...loanData, _type: 'Loan' }] : [])
+    ...scholarshipApps,
+    ...loanApps
   ].filter(a => 
     (a.applicationId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (a.personalInfo?.scheme || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

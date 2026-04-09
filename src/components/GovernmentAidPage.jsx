@@ -6,7 +6,7 @@ import {
 import { useUser } from '../context/UserContext';
 import {
   Building2, CheckCircle2, Search, Filter, Sparkles, ArrowRight,
-  ExternalLink, Info, Loader2, GraduationCap, Users, BadgeDollarSign,
+  ExternalLink, Info, Loader2, GraduationCap, Users, IndianRupee,
   Clock, ShieldCheck, ChevronDown, ChevronUp, Star, Bookmark,
   CircleAlert, RefreshCw, Landmark
 } from 'lucide-react';
@@ -136,7 +136,7 @@ const DEFAULT_SCHEMES = [
 ];
 
 // ─── SchemeCard Component ─────────────────────────────────────────────────────
-const SchemeCard = ({ scheme, onApply }) => {
+const SchemeCard = ({ scheme, onApply, isRejected }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -267,9 +267,12 @@ const SchemeCard = ({ scheme, onApply }) => {
         <div className="flex gap-3 mt-4">
           <button
             onClick={() => onApply(scheme)}
-            className="flex-1 h-10 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-bold hover:bg-accent hover:text-bg-base transition-all duration-300 flex items-center justify-center gap-2 group/btn"
+            className={`flex-1 h-10 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 group/btn
+              ${isRejected 
+                ? 'bg-warning/10 border border-warning/20 text-warning hover:bg-warning hover:text-bg-base' 
+                : 'bg-accent/10 border border-accent/20 text-accent hover:bg-accent hover:text-bg-base'}`}
           >
-            Apply Now <ArrowRight size={15} className="group-hover/btn:translate-x-1 transition-transform" />
+            {isRejected ? 'Re-apply Now' : 'Apply Now'} <ArrowRight size={15} className="group-hover/btn:translate-x-1 transition-transform" />
           </button>
           <a
             href={scheme.applyLink}
@@ -293,7 +296,7 @@ const StatBanner = ({ count, totalAmount, categories }) => (
   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
     {[
       { label: 'Active Schemes', value: count, icon: Landmark, color: 'text-accent' },
-      { label: 'Max Combined Aid', value: totalAmount, icon: BadgeDollarSign, color: 'text-success' },
+      { label: 'Max Combined Aid', value: totalAmount, icon: IndianRupee, color: 'text-success' },
       { label: 'Categories', value: categories, icon: Users, color: 'text-accent-ai' },
     ].map((stat, i) => (
       <div key={i} className="p-5 glass-card rounded-2xl border border-white/5 flex items-center gap-4">
@@ -318,6 +321,7 @@ const GovernmentAidPage = ({ onApply }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [applyModal, setApplyModal] = useState(null);
+  const [userApplications, setUserApplications] = useState([]);
 
   const categories = ['All', 'Central Government', 'OBC Welfare', 'SC/ST Welfare', 'Merit-Based Science', 'Girl Students', 'Economically Weaker'];
 
@@ -346,6 +350,16 @@ const GovernmentAidPage = ({ onApply }) => {
     return () => unsubscribe();
   }, []);
 
+  // ── User Application listener ──────────────────────────────────────────
+  useEffect(() => {
+    if (!user?.uid) return;
+    const q = query(collection(db, 'scholarshipApplications'), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUserApplications(snapshot.docs.map(d => d.data()));
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
+
   // ── Seed default schemes to Firestore ────────────────────────────────────
   const seedSchemes = async () => {
     setSeeding(true);
@@ -371,6 +385,15 @@ const GovernmentAidPage = ({ onApply }) => {
       s.ministry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.tags?.some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchCategory = filterCategory === 'All' || s.category === filterCategory;
+    
+    // Logic: Hide if applied, unless rejected
+    const app = userApplications.find(a => a.personalInfo?.scheme === s.name);
+    const isApplied = !!app;
+    const isRejected = app && app.status === 'Rejected';
+    
+    // If it's this specific scheme and it's applied but NOT rejected, hide it
+    if (isApplied && !isRejected) return false;
+    
     return matchSearch && matchCategory;
   });
 
@@ -501,6 +524,7 @@ const GovernmentAidPage = ({ onApply }) => {
                 key={scheme.schemeId || scheme.id || idx}
                 scheme={scheme}
                 onApply={(s) => setApplyModal(s)}
+                isRejected={userApplications.some(a => a.personalInfo?.scheme === scheme.name && a.status === 'Rejected')}
               />
             ))}
           </div>

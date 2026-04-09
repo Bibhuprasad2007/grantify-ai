@@ -143,6 +143,8 @@ const LoanOffersPage = ({ onApplyLoan }) => {
             <LoanCard 
               key={offer.id} 
               {...offer} 
+              title={offer.loanName || offer.title}
+              aiTag={offer.tags?.[0] || 'AI Approved'}
               delay={(idx % 4) + 1} 
               onClick={onApplyLoan}
             />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Search, Eye, Clock, CheckCircle2, Circle, 
   MapPin, User, FileText, ChevronRight,
-  TrendingUp, ShieldCheck, Landmark, BadgeDollarSign,
+  TrendingUp, ShieldCheck, Landmark, IndianRupee,
   ArrowLeft, Activity, Box
 } from 'lucide-react';
 
@@ -73,7 +73,7 @@ const DisbursementTracking = ({ disbursements = [] }) => {
       { label: 'Risk Assessment Audit', icon: ShieldCheck },
       { label: 'Digital Final Submission', icon: Box },
       { label: 'Loan Sanction Generation', icon: CheckCircle2 },
-      { label: 'Final Fund Disbursement', icon: BadgeDollarSign },
+      { label: 'Final Fund Disbursement', icon: IndianRupee },
     ];
 
     return (

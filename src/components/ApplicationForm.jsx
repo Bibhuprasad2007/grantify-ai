@@ -3,7 +3,7 @@ import {
   User, GraduationCap, Landmark, ArrowRight, ArrowLeft, 
   Upload, Save, Download, CheckCircle2, FileText, 
   Archive, Sparkles, ChevronRight, Calculator, MapPin,
-  Cloud, CloudOff, Loader2
+  Cloud, CloudOff, Loader2, Wand2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -188,7 +188,7 @@ const UploadComponent = ({ label, desc, onUpload, preview, fileName, icon: Icon 
 
 // --- Main Form Component ---
 
-const ApplicationForm = ({ onBackToDashboard }) => {
+const ApplicationForm = ({ onBackToDashboard, preFilledScheme }) => {
   const { user } = useUser();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -198,6 +198,7 @@ const ApplicationForm = ({ onBackToDashboard }) => {
   const [topWarning, setTopWarning] = useState('');
   const [saveStatus, setSaveStatus] = useState(null);
   const [appId, setAppId] = useState('');
+  const [autoFillDone, setAutoFillDone] = useState(false);
   
   // File objects
   const [files, setFiles] = useState({
@@ -225,10 +226,11 @@ const ApplicationForm = ({ onBackToDashboard }) => {
     accHolder: '', accNo: '', confirmAccNo: '',
   });
 
-  // Generate appId
+  // Generate appId and target doc ID
   useEffect(() => {
-    setAppId(`SCH-${user.uid.substring(0, 6).toUpperCase()}`);
-  }, [user.uid]);
+    const sId = preFilledScheme?.schemeId || 'GEN';
+    setAppId(`SCH-${user.uid.substring(0, 6).toUpperCase()}-${sId.substring(0, 4)}`);
+  }, [user.uid, preFilledScheme]);
 
   // Auto calculate percentage
   useEffect(() => {
@@ -243,7 +245,8 @@ const ApplicationForm = ({ onBackToDashboard }) => {
     if (!user?.uid) return;
     const loadDraft = async () => {
       try {
-        const docRef = doc(db, "scholarshipApplications", user.uid);
+        const sId = preFilledScheme?.schemeId || 'GENERAL';
+        const docRef = doc(db, "scholarshipApplications", `${user.uid}_${sId}`);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -257,7 +260,8 @@ const ApplicationForm = ({ onBackToDashboard }) => {
             email: p.email || '', fatherName: p.fatherName || '', motherName: p.motherName || '',
             guardianName: p.guardianName || '', district: p.district || '', block: p.block || '',
             ward: p.ward || '', village: p.village || '', pinCode: p.pinCode || '', address: p.address || '',
-            academicYear: p.academicYear || '2024-25', department: p.department || '', scheme: p.scheme || '',
+            academicYear: p.academicYear || '2024-25', department: p.department || '', 
+            scheme: preFilledScheme ? preFilledScheme.name : (p.scheme || ''),
             course: a.course || '', board: a.board || '', passingYear: a.passingYear || '', rollNo: a.rollNo || '',
             totalMarks: a.totalMarks || '', securedMarks: a.securedMarks || '', percentage: a.percentage || '',
             instDistrict: a.instDistrict || '', instBlock: a.instBlock || '', instName: a.instName || '',
@@ -288,6 +292,38 @@ const ApplicationForm = ({ onBackToDashboard }) => {
     };
     loadDraft();
   }, [user?.uid]);
+
+  // === Auto-Fill from Profile ===
+  const handleAutoFill = () => {
+    if (!user) return;
+    setFormData(prev => ({
+      ...prev,
+      name: user.displayName || user.name || prev.name,
+      category: user.category || prev.category,
+      gender: user.gender || prev.gender,
+      religion: user.religion || prev.religion,
+      dob: user.dob || prev.dob,
+      aadhaar: user.aadhar || prev.aadhaar,
+      mobile: user.phoneNo || prev.mobile,
+      email: user.email || prev.email,
+      fatherName: user.fathersName || prev.fatherName,
+      motherName: user.mothersName || prev.motherName,
+      district: user.district || prev.district,
+      state: user.state || prev.state,
+      course: user.courseName || prev.course,
+      instName: user.collegeName || prev.instName,
+      rollNo: user.regNum || prev.rollNo,
+      totalMarks: user.marks || prev.totalMarks,
+      ifsc: user.ifsc || prev.ifsc,
+      bankName: user.bankName || prev.bankName,
+      branchName: user.branch || prev.branchName,
+      accNo: user.accNum || prev.accNo,
+      confirmAccNo: user.accNum || prev.confirmAccNo,
+      accHolder: user.displayName || user.name || prev.accHolder,
+    }));
+    setAutoFillDone(true);
+    setTimeout(() => setAutoFillDone(false), 3000);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -346,9 +382,12 @@ const ApplicationForm = ({ onBackToDashboard }) => {
     if (!user?.uid) return;
     setSaveStatus('saving');
     try {
+      const sId = preFilledScheme?.schemeId || 'GENERAL';
+      const docId = `${user.uid}_${sId}`;
       const dataToSave = {
         applicationId: appId,
         userId: user.uid,
+        schemeId: sId,
         email: user.email,
         personalInfo: {
           name: formData.name, category: formData.category, gender: formData.gender, religion: formData.religion,
@@ -376,12 +415,12 @@ const ApplicationForm = ({ onBackToDashboard }) => {
         updatedAt: serverTimestamp()
       };
 
-      const existingDoc = await getDoc(doc(db, "scholarshipApplications", user.uid));
+      const existingDoc = await getDoc(doc(db, "scholarshipApplications", docId));
       if (!existingDoc.exists()) {
         dataToSave.createdAt = serverTimestamp();
       }
 
-      await setDoc(doc(db, "scholarshipApplications", user.uid), dataToSave, { merge: true });
+      await setDoc(doc(db, "scholarshipApplications", docId), dataToSave, { merge: true });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus(null), 2000);
     } catch (error) {
@@ -498,7 +537,8 @@ const ApplicationForm = ({ onBackToDashboard }) => {
           ]);
 
           if (Object.keys(fileUrls).length > 0) {
-            await updateDoc(doc(db, "scholarshipApplications", user.uid), fileUrls);
+            const sId = preFilledScheme?.schemeId || 'GENERAL';
+            await updateDoc(doc(db, "scholarshipApplications", `${user.uid}_${sId}`), fileUrls);
             console.log("Background file upload complete ✅");
           }
         } catch (bgError) {
@@ -596,7 +636,15 @@ const ApplicationForm = ({ onBackToDashboard }) => {
             <span className="text-[10px] font-bold text-success uppercase">{calculateProgress()}% Complete</span>
           </div>
         </div>
-        <div className="hidden sm:block">
+        <div className="hidden sm:flex items-center gap-3">
+           <button
+             type="button"
+             onClick={handleAutoFill}
+             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-accent-ai to-accent rounded-xl text-white text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-accent/20"
+           >
+             <Wand2 size={14} />
+             {autoFillDone ? '✅ Filled!' : 'Auto Fill from Profile'}
+           </button>
            <div className="flex items-center gap-3 px-4 py-2 bg-accent/10 border border-accent/30 rounded-xl text-accent text-xs font-bold">
               <Sparkles size={14} /> AI VALIDATION ACTIVE
            </div>
@@ -653,7 +701,7 @@ const ApplicationForm = ({ onBackToDashboard }) => {
             <FormSection title="Other Details">
               <InputField label="Academic Year" name="academicYear" type="select" options={['2023-24', '2024-25', '2025-26']} value={formData.academicYear} onChange={handleInputChange} errors={errors} />
               <InputField label="Department" name="department" value={formData.department} onChange={handleInputChange} placeholder="e.g. Higher Education" errors={errors} />
-              <InputField label="Scheme" name="scheme" value={formData.scheme} onChange={handleInputChange} placeholder="Select Scholarship Scheme" errors={errors} />
+              <InputField label="Scheme" name="scheme" value={formData.scheme} onChange={handleInputChange} placeholder="Select Scholarship Scheme" errors={errors} readOnly={!!preFilledScheme} />
             </FormSection>
           </div>
         )}

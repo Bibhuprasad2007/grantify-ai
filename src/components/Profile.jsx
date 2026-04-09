@@ -34,7 +34,7 @@ const InfoField = memo(({ label, name, value, icon: Icon, placeholder, type = "t
           onChange={onChange}
           placeholder={placeholder}
           autoComplete="off"
-          className="bg-transparent border-none outline-none text-sm font-medium text-text-1 w-full placeholder:text-text-3/50"
+          className="bg-transparent border-none outline-none text-sm font-medium text-text-1 w-full placeholder:opacity-50 placeholder:text-text-3"
         />
       ) : (
         <span className={`text-sm font-medium ${value ? 'text-text-1' : 'text-text-3 italic'}`}>
@@ -72,7 +72,14 @@ const Profile = ({ onBack }) => {
     bankName: user?.bankName || '',
     branch: user?.branch || '',
     accNum: user?.accNum || '',
-    ifsc: user?.ifsc || ''
+    ifsc: user?.ifsc || '',
+    annualIncome: user?.annualIncome || '',
+    marks: user?.marks || '',
+    marks10th: user?.marks10th || '',
+    marks12th: user?.marks12th || '',
+    fatherOccupation: user?.fatherOccupation || '',
+    motherOccupation: user?.motherOccupation || '',
+    gender: user?.gender || ''
   });
 
   // Only sync when user data initially loads or major updates happen
@@ -297,6 +304,29 @@ const Profile = ({ onBack }) => {
               <InfoField label="Aadhaar Number" name="aadhar" value={formData.aadhar} icon={Fingerprint} placeholder="12-digit UID" isEditing={isEditing} onChange={handleInputChange} />
               <InfoField label="Mobile Number" name="phoneNo" value={formData.phoneNo} icon={Phone} placeholder="+91 XXXXX XXXXX" isEditing={isEditing} onChange={handleInputChange} />
               <InfoField label="Email Address" name="email" value={formData.email} icon={Mail} placeholder="john@example.com" type="email" isEditing={isEditing} onChange={handleInputChange} />
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-extrabold text-text-3 uppercase tracking-widest ml-1">Gender</label>
+                {isEditing ? (
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    className="w-full bg-bg-base border border-accent/30 focus:border-accent ring-accent/10 focus:ring-4 p-3 rounded-xl text-sm font-medium text-text-1 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                ) : (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-bg-elevated/50 border border-white/5">
+                    <Users size={16} className="text-text-3" />
+                    <span className={`text-sm font-medium ${formData.gender ? 'text-text-1' : 'text-text-3 italic'}`}>
+                      {formData.gender || "No gender provided"}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -306,6 +336,8 @@ const Profile = ({ onBack }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <InfoField label="Father's Name" name="fathersName" value={formData.fathersName} icon={User} placeholder="Father's Name" isEditing={isEditing} onChange={handleInputChange} />
               <InfoField label="Mother's Name" name="mothersName" value={formData.mothersName} icon={User} placeholder="Mother's Name" isEditing={isEditing} onChange={handleInputChange} />
+              <InfoField label="Father's Occupation" name="fatherOccupation" value={formData.fatherOccupation} icon={Landmark} placeholder="e.g., Farmer" isEditing={isEditing} onChange={handleInputChange} />
+              <InfoField label="Mother's Occupation" name="motherOccupation" value={formData.motherOccupation} icon={Landmark} placeholder="e.g., Housewife" isEditing={isEditing} onChange={handleInputChange} />
             </div>
           </div>
 
@@ -316,6 +348,10 @@ const Profile = ({ onBack }) => {
               <InfoField label="Course Name" name="courseName" value={formData.courseName} icon={Award} placeholder="e.g., B.Tech Computer Science" isEditing={isEditing} onChange={handleInputChange} />
               <InfoField label="University / College" name="collegeName" value={formData.collegeName} icon={Building} placeholder="Complete Institute Name" isEditing={isEditing} onChange={handleInputChange} />
               <InfoField label="Registration Number" name="regNum" value={formData.regNum} icon={Hash} placeholder="University Roll/Reg No." isEditing={isEditing} onChange={handleInputChange} />
+              <InfoField label="Graduation Marks (%)" name="marks" value={formData.marks} icon={Award} placeholder="e.g. 85" isEditing={isEditing} onChange={handleInputChange} />
+              <InfoField label="10th Marks (%)" name="marks10th" value={formData.marks10th} icon={Award} placeholder="e.g. 90" isEditing={isEditing} onChange={handleInputChange} />
+              <InfoField label="12th Marks (%)" name="marks12th" value={formData.marks12th} icon={Award} placeholder="e.g. 88" isEditing={isEditing} onChange={handleInputChange} />
+              <InfoField label="Annual Family Income" name="annualIncome" value={formData.annualIncome} icon={Landmark} placeholder="e.g. 150000" isEditing={isEditing} onChange={handleInputChange} />
             </div>
           </div>
 

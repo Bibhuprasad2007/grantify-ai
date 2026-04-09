@@ -6,7 +6,7 @@ import {
   LayoutDashboard, FileText, ShieldCheck, Users, Landmark, GraduationCap,
   Bell, BarChart3, Settings, LogOut, ChevronRight, Search, Filter,
   CheckCircle2, XCircle, Clock, AlertTriangle, Eye, Download,
-  TrendingUp, TrendingDown, ArrowUpRight, Sparkles, BadgeDollarSign,
+  TrendingUp, TrendingDown, ArrowUpRight, Sparkles, IndianRupee,
   Send, FileDown, UserCheck, Flag, Star, MessageSquare, ChevronDown,
   Activity, ArrowLeft, ExternalLink, Calendar, Briefcase, GraduationCap as ScholarshipIcon
 } from 'lucide-react';
@@ -144,7 +144,7 @@ const DistrictAdminPanel = () => {
 
         return {
           id: d.applicationId || doc.id,
-          userId: doc.id,
+          userId: d.userId || doc.id,
           name: d.personalInfo?.name || d.personalInfo?.fullName || 'Unknown Applicant',
           type: 'Scholarship',
           status: d.status || 'Pending',
@@ -696,7 +696,7 @@ const DistrictAdminPanel = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
             { label: 'Active Schemes', value: 12, icon: ScholarshipIcon, color: 'accent' },
-            { label: 'Total Fund', value: '₹4.2 Cr', icon: BadgeDollarSign, color: 'success' },
+            { label: 'Total Fund', value: '₹4.2 Cr', icon: IndianRupee, color: 'success' },
             { label: 'Avg Eligibility', value: '82%', icon: BarChart3, color: '[#006A8E]' }
         ].map((s, i) => (
             <div key={i} className="p-4 glass border border-white/5 rounded-2xl flex items-center gap-4">

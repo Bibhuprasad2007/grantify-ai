@@ -3,8 +3,8 @@ import {
   User, GraduationCap, Landmark, ArrowRight, ArrowLeft, 
   Upload, Save, Download, CheckCircle2, FileText, 
   Archive, Sparkles, ChevronRight, Calculator, MapPin,
-  Users, DollarSign, Building2, Briefcase, Info, BadgeDollarSign,
-  CloudOff, Cloud, Loader2
+  Users, IndianRupee, Building2, Briefcase, Info, 
+  CloudOff, Cloud, Loader2, Wand2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
@@ -225,6 +225,7 @@ const LoanForm = ({ onBackToDashboard, onCheckCibil }) => {
   const [appId, setAppId] = useState('');
   const [cibilScore, setCibilScore] = useState(null);
   const [cibilChecking, setCibilChecking] = useState(false);
+  const [autoFillDone, setAutoFillDone] = useState(false);
   
   // File objects (not saved to Firestore directly)
   const [files, setFiles] = useState({
@@ -302,6 +303,37 @@ const LoanForm = ({ onBackToDashboard, onCheckCibil }) => {
     };
     loadDraft();
   }, [user?.uid]);
+
+  // === Auto-Fill from Profile ===
+  const handleAutoFill = () => {
+    if (!user) return;
+    setFormData(prev => ({
+      ...prev,
+      name: user.displayName || user.name || prev.name,
+      dob: user.dob || prev.dob,
+      gender: user.gender || prev.gender,
+      category: user.category || prev.category,
+      aadhaar: user.aadhar || prev.aadhaar,
+      mobile: user.phoneNo || prev.mobile,
+      email: user.email || prev.email,
+      fatherName: user.fathersName || prev.fatherName,
+      motherName: user.mothersName || prev.motherName,
+      parentOccupation: user.fatherOccupation || prev.parentOccupation,
+      annualIncome: user.annualIncome || prev.annualIncome,
+      marks: user.marks || prev.marks,
+      courseName: user.courseName || prev.courseName,
+      collegeName: user.collegeName || prev.collegeName,
+      admissionNo: user.regNum || prev.admissionNo,
+      holderName: user.displayName || user.name || prev.holderName,
+      ifsc: user.ifsc || prev.ifsc,
+      bankName: user.bankName || prev.bankName,
+      branchName: user.branch || prev.branchName,
+      accNo: user.accNum || prev.accNo,
+      confirmAccNo: user.accNum || prev.confirmAccNo,
+    }));
+    setAutoFillDone(true);
+    setTimeout(() => setAutoFillDone(false), 3000);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -561,14 +593,24 @@ const LoanForm = ({ onBackToDashboard, onCheckCibil }) => {
            <p className="text-text-3 text-sm font-mono mt-1">REF: {appId}</p>
         </div>
         <div className="hidden sm:flex flex-col items-end gap-3">
-           <button 
-             onClick={onCheckCibil} 
-             className="px-6 py-2.5 bg-gradient-to-r from-accent to-accent-ai rounded-2xl text-white text-xs font-bold flex items-center gap-2 hover:shadow-xl hover:shadow-accent/20 transition-all hover:scale-105"
-           >
-             <Sparkles size={16} /> Check CIBIL Score
-           </button>
+           <div className="flex items-center gap-3">
+             <button
+               type="button"
+               onClick={handleAutoFill}
+               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-accent-ai to-accent rounded-xl text-white text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-accent/20"
+             >
+               <Wand2 size={14} />
+               {autoFillDone ? '✅ Filled!' : 'Auto Fill from Profile'}
+             </button>
+             <button 
+               onClick={onCheckCibil} 
+               className="px-6 py-2.5 bg-gradient-to-r from-accent to-accent-ai rounded-2xl text-white text-xs font-bold flex items-center gap-2 hover:shadow-xl hover:shadow-accent/20 transition-all hover:scale-105"
+             >
+               <Sparkles size={16} /> Check CIBIL Score
+             </button>
+           </div>
            <div className="px-5 py-2 bg-accent/10 border border-accent/20 rounded-2xl text-accent text-[10px] font-bold flex items-center gap-2">
-             <BadgeDollarSign size={14} /> INSTANT DISBURSEMENT ELIGIBLE
+             <IndianRupee size={14} /> INSTANT DISBURSEMENT ELIGIBLE
            </div>
         </div>
       </div>
@@ -657,7 +699,7 @@ const LoanForm = ({ onBackToDashboard, onCheckCibil }) => {
                 </div>
               </FormSection>
 
-              <FormSection title="Loan Details" icon={DollarSign}>
+              <FormSection title="Loan Details" icon={IndianRupee}>
                  <InputField label="Loan Amount Required" name="loanAmount" type="number" value={formData.loanAmount} onChange={handleInputChange} required errors={errors} />
                  <InputField label="Tuition Fee" name="tuitionFee" type="number" value={formData.tuitionFee} onChange={handleInputChange} required errors={errors} />
                  <InputField label="Hostel Fee" name="hostelFee" type="number" value={formData.hostelFee} onChange={handleInputChange} errors={errors} />

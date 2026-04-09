@@ -58,38 +58,54 @@ const KPICard = ({ title, value, desc, icon: Icon, colorClass, status, progress,
   </div>
 );
 
-const ProgressTracker = ({ loanData }) => {
-  const loanStatus = loanData?.status || 'Not Started';
-  
+const ProgressTracker = ({ loanData, scholarshipData }) => {
+  const [activeTab, setActiveTab] = useState('loan');
+  const activeApp = activeTab === 'loan' ? loanData : scholarshipData;
+  const status = activeApp?.status || 'Not Started';
+  const type = activeTab === 'loan' ? 'Loan' : 'Scholarship';
+
+  useEffect(() => {
+    if (!loanData && scholarshipData) setActiveTab('scholarship');
+    if (loanData && !scholarshipData) setActiveTab('loan');
+  }, [loanData, scholarshipData]);
+
   const getStepState = (stepIndex) => {
-    if (loanStatus === 'Submitted') {
-      if (stepIndex <= 2) return 'completed';
-      if (stepIndex === 3) return 'active';
-      return 'idle';
-    }
-    if (loanStatus === 'Draft') {
-      if (stepIndex === 0) return 'completed';
-      if (stepIndex === 1) return 'active';
-      return 'idle';
-    }
+    if (status === 'Not Started') return 'idle';
+    
+    // Status Hierarchy: Draft -> Submitted (Pending) -> Verified -> Approved -> Disbursed
+    const statusMap = {
+      'Draft': 1,
+      'Submitted': 1,
+      'Pending': 1,
+      'Verified': 2,
+      'Approved': 3,
+      'Disbursed': 4,
+      'Rejected': -1
+    };
+
+    const currentLevel = statusMap[status] || 0;
+
+    if (status === 'Rejected') return stepIndex === 0 ? 'completed' : 'idle';
+    if (stepIndex < currentLevel) return 'completed';
+    if (stepIndex === currentLevel) return 'active';
     return 'idle';
   };
 
   const steps = [
-    { label: 'Form Filed', time: loanStatus === 'Draft' ? 'In Progress' : loanStatus === 'Submitted' ? 'Completed' : 'Pending', state: getStepState(0), icon: loanStatus !== 'Not Started' ? CheckCircle2 : Circle },
-    { label: 'KYC Verification', time: loanStatus === 'Submitted' ? 'Completed' : 'Pending', state: getStepState(1), icon: getStepState(1) === 'completed' ? CheckCircle2 : getStepState(1) === 'active' ? Clock : Circle },
-    { label: 'Credit Check', time: loanStatus === 'Submitted' ? 'Completed' : 'Pending', state: getStepState(2), icon: getStepState(2) === 'completed' ? CheckCircle2 : Circle },
-    { label: 'Bank Matching', time: loanStatus === 'Submitted' ? 'In Progress' : 'Pending', state: getStepState(3), icon: getStepState(3) === 'active' ? Clock : Circle },
-    { label: 'Disbursement', time: 'Pending', state: getStepState(4), icon: Circle },
+    { label: 'Form Filed', time: status !== 'Not Started' ? 'Completed' : 'Pending', state: getStepState(0), icon: status !== 'Not Started' ? CheckCircle2 : Circle },
+    { label: 'KYC/Doc Verify', time: (getStepState(1) === 'completed') ? 'Completed' : (getStepState(1) === 'active') ? 'In Progress' : 'Pending', state: getStepState(1), icon: getStepState(1) === 'completed' ? CheckCircle2 : getStepState(1) === 'active' ? Clock : Circle },
+    { label: 'Admin Review', time: (getStepState(2) === 'completed') ? 'Completed' : (getStepState(2) === 'active') ? 'In Progress' : 'Pending', state: getStepState(2), icon: getStepState(2) === 'completed' ? CheckCircle2 : getStepState(2) === 'active' ? ShieldCheck : Circle },
+    { label: 'Final Approval', time: (getStepState(3) === 'completed') ? 'Approved' : 'Pending', state: getStepState(3), icon: getStepState(3) === 'completed' ? CheckCircle2 : Circle },
+    { label: 'Disbursement', time: status === 'Disbursed' ? 'Done' : 'Pending', state: getStepState(4), icon: Landmark },
   ];
 
-  const activeWidth = loanStatus === 'Submitted' ? '60%' : loanStatus === 'Draft' ? '20%' : '0%';
+  const activeWidth = status === 'Disbursed' ? '100%' : status === 'Approved' ? '75%' : status === 'Verified' ? '50%' : (status === 'Submitted' || status === 'Pending') ? '25%' : '0%';
 
   return (
     <div className="p-8 rounded-[2.5rem] glass border border-white/5 mt-10 stagger-up-4 relative overflow-hidden group">
       <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
       
-      <div className="flex items-center justify-between mb-10 px-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 px-2">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center border border-accent/40 shadow-accent-glow">
             <TrendingUp size={18} className="text-accent" />
@@ -97,26 +113,43 @@ const ProgressTracker = ({ loanData }) => {
           <div>
             <h3 className="text-base font-bold text-text-1">Application Journey</h3>
             <p className="text-[11px] text-text-3 font-semibold uppercase tracking-widest">
-              {loanData?.academicInfo?.courseName || 'No Active Application'} {loanData?.academicInfo?.collegeName ? `- ${loanData.academicInfo.collegeName}` : ''}
+              Live tracking from backend database
             </p>
           </div>
         </div>
+
+        <div className="flex bg-bg-base/50 p-1 rounded-xl border border-white/5 shadow-inner">
+           <button 
+             onClick={() => setActiveTab('loan')}
+             className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTab === 'loan' ? 'bg-accent text-bg-base shadow-lg shadow-accent/20' : 'text-text-3 hover:text-text-1'}`}
+           >
+             Loan Journey
+           </button>
+           <button 
+             onClick={() => setActiveTab('scholarship')}
+             className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTab === 'scholarship' ? 'bg-accent-ai text-white shadow-lg shadow-accent-ai/20' : 'text-text-3 hover:text-text-1'}`}
+           >
+             Scholarship Journey
+           </button>
+        </div>
+
         <div className={`px-4 py-1.5 rounded-full border text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 ${
-          loanStatus === 'Submitted' ? 'bg-success/10 border-success/30 text-success' :
-          loanStatus === 'Draft' ? 'bg-warning/10 border-warning/30 text-warning' :
-          'bg-white/5 border-white/10 text-text-3'
+          status === 'Approved' || status === 'Disbursed' ? 'bg-success/10 border-success/30 text-success' :
+          status === 'Rejected' ? 'bg-danger/10 border-danger/30 text-danger' :
+          status === 'Not Started' ? 'bg-white/5 border-white/10 text-text-3' :
+          'bg-warning/10 border-warning/30 text-warning'
         }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${loanStatus === 'Submitted' ? 'bg-success animate-pulse' : loanStatus === 'Draft' ? 'bg-warning animate-pulse' : 'bg-text-3'}`}></span>
-          {loanStatus === 'Submitted' ? 'Under Review' : loanStatus === 'Draft' ? 'In Progress' : 'Not Started'}
+          <span className={`w-1.5 h-1.5 rounded-full ${status === 'Approved' ? 'bg-success animate-pulse' : status === 'Rejected' ? 'bg-danger' : 'bg-warning animate-pulse'}`}></span>
+          {status === 'Submitted' ? 'Under Review' : status === 'Verified' ? 'Verified' : status}
         </div>
       </div>
 
-      <div className="relative flex justify-between items-start px-4">
+      <div className="relative flex justify-between items-start px-4 overflow-x-auto min-w-[600px] pb-4">
         <div className="absolute top-6 left-12 right-12 h-[2.5px] bg-border-default z-0"></div>
         <div className="absolute top-6 left-12 h-[2.5px] bg-accent z-0 transition-all duration-1000 shadow-accent-glow" style={{ width: activeWidth }}></div>
 
         {steps.map((step, idx) => (
-          <div key={idx} className="relative z-10 flex flex-col items-center group/step cursor-pointer">
+          <div key={idx} className="relative z-10 flex flex-col items-center group/step min-w-[100px]">
             <div className={`
               w-12 h-12 rounded-full border-4 flex items-center justify-center transition-all duration-300
               ${step.state === 'completed' ? 'bg-success border-success text-white shadow-lg shadow-success/20' : ''}
@@ -432,7 +465,7 @@ const Dashboard = ({ onApplyLoan, onApplyScholarship }) => {
       )}
 
       {/* Progress Journey */}
-      <ProgressTracker loanData={loanData} />
+      <ProgressTracker loanData={loanData} scholarshipData={scholarshipData} />
 
       {/* Scholarship Section */}
       <section className="mt-16">

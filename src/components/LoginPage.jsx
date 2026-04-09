@@ -126,7 +126,7 @@ const LoginPage = () => {
   const roleDetails = role ? getRoleHeaderDetails() : null;
 
   return (
-    <div className="min-h-[100dvh] bg-bg-base flex flex-col items-center justify-center relative overflow-x-hidden p-4 sm:p-6 pb-20">
+    <div className="min-h-screen bg-bg-base flex flex-col items-center justify-start sm:justify-center relative overflow-x-hidden p-4 sm:p-6 py-12 sm:py-20">
       
       {/* Animated background orbs */}
       <div className="fixed top-[-20%] left-[-10%] w-[600px] h-[600px] bg-accent/5 rounded-full blur-[120px] animate-pulse-slow pointer-events-none" />
@@ -233,32 +233,34 @@ const LoginPage = () => {
 
           {/* ---- TERMS VIEW ---- */}
           {view === 'terms' && (
-            <div className="space-y-5 animate-fade-in text-left">
-              <h3 className="text-base font-bold text-text-1 mb-2 border-b border-white/10 pb-2">
-                One-time, online registration of students for applying for Scholarship via portal:
-              </h3>
-              <ul className="space-y-3 text-sm text-text-2 list-disc pl-5 leading-relaxed">
-                <li>Kindly map your Aadhaar number with your Bank account to receive scholarship amount under various schemes directly via DBT.</li>
-                <li>I have read and understood the eligibility and other conditions of award of Scholarship as per the scheme guidelines.</li>
-                <li>I understand that my application is liable to be rejected if I provide wrong Aadhaar number or Aadhaar number of someone else's.</li>
-                <li>I understand that if more than one application is found to be made on-line, all my applications are liable to be rejected.</li>
-                <li>Aadhaar is made mandatory for availing scholarship. Registration on the portal is based on Aadhaar. In one Aadhaar only single registration is allowed.</li>
-                <li className="text-danger/90 font-medium">As per the Item 35 of Chapter VII of Aadhaar ACT 2016, if a person enters Aadhaar number of any other person and attempts to impersonate another person, dead or alive, he/she shall be punishable with imprisonment.</li>
-              </ul>
+            <div className="animate-fade-in">
+              <div className="space-y-5 text-left max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar pb-4">
+                <h3 className="text-base font-bold text-text-1 mb-2 border-b border-white/10 pb-2">
+                  One-time, online registration of students for applying for Scholarship via portal:
+                </h3>
+                <ul className="space-y-3 text-sm text-text-2 list-disc pl-5 leading-relaxed">
+                  <li>Kindly map your Aadhaar number with your Bank account to receive scholarship amount under various schemes directly via DBT.</li>
+                  <li>I have read and understood the eligibility and other conditions of award of Scholarship as per the scheme guidelines.</li>
+                  <li>I understand that my application is liable to be rejected if I provide wrong Aadhaar number or Aadhaar number of someone else's.</li>
+                  <li>I understand that if more than one application is found to be made on-line, all my applications are liable to be rejected.</li>
+                  <li>Aadhaar is made mandatory for availing scholarship. Registration on the portal is based on Aadhaar. In one Aadhaar only single registration is allowed.</li>
+                  <li className="text-danger/90 font-medium">As per the Item 35 of Chapter VII of Aadhaar ACT 2016, if a person enters Aadhaar number of any other person and attempts to impersonate another person, dead or alive, he/she shall be punishable with imprisonment.</li>
+                </ul>
 
-              <div 
-                className="flex gap-4 p-4 mt-6 rounded-xl bg-bg-base/80 border border-white/10 cursor-pointer hover:bg-white/5 transition-colors shadow-inner"
-                onClick={() => setTermsChecked(!termsChecked)}
-              >
-                <div className="mt-0.5 shrink-0">
-                  {termsChecked ? <CheckSquare size={22} className="text-accent drop-shadow-md" /> : <Square size={22} className="text-text-3" />}
+                <div 
+                  className="flex gap-4 p-4 mt-6 rounded-xl bg-bg-base/80 border border-white/10 cursor-pointer hover:bg-white/5 transition-colors shadow-inner"
+                  onClick={() => setTermsChecked(!termsChecked)}
+                >
+                  <div className="mt-0.5 shrink-0">
+                    {termsChecked ? <CheckSquare size={22} className="text-accent drop-shadow-md" /> : <Square size={22} className="text-text-3" />}
+                  </div>
+                  <p className="text-xs font-semibold text-text-2 leading-relaxed">
+                    I have read the above statements & agree with the conditions. Further, I hereby state that I have no objection in authenticating myself with Demographic Aadhaar authentication system for the purpose of availing benefit of Scholarship.
+                  </p>
                 </div>
-                <p className="text-xs font-semibold text-text-2 leading-relaxed">
-                  I have read the above statements & agree with the conditions. Further, I hereby state that I have no objection in authenticating myself with Demographic Aadhaar authentication system for the purpose of availing benefit of Scholarship.
-                </p>
               </div>
 
-              <div className="flex justify-end pt-4 pb-2">
+              <div className="flex justify-end pt-6 border-t border-white/5 mt-4">
                 <button
                   onClick={() => { if(termsChecked) setView('register'); }}
                   disabled={!termsChecked}
@@ -272,109 +274,112 @@ const LoginPage = () => {
 
           {/* ---- FORM VIEWS ---- */}
           {(view === 'login' || view === 'register' || view === 'forgot') && (
-            <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">
-              
-              {/* Registration Extra Fields (Only for applicants) */}
-              {view === 'register' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
-                    <input type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required
-                      className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-text-3/50" />
-                  </div>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
-                    <input type="text" placeholder="Father's Name" value={fathersName} onChange={(e) => setFathersName(e.target.value)} required
-                      className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-text-3/50" />
-                  </div>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
-                    <input type="tel" placeholder="Phone Number" value={phoneNo} onChange={(e) => setPhoneNo(e.target.value)} required
-                      className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-text-3/50" />
-                  </div>
-                  <div className="relative">
-                    <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
-                    <input type="text" placeholder="12-Digit Aadhar Card" value={aadhar} onChange={(e) => setAadhar(e.target.value)} required maxLength={12}
-                      className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-text-3/50" />
-                  </div>
-                </div>
-              )}
-
-              {/* Dynamic Identifiers Based on Role */}
-              {view === 'login' && role === 'district' && (
-                <div className="relative">
-                  <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-[#006A8E] pointer-events-none" size={18} />
-                  <input type="text" placeholder="District ID / Access Code" value={districtId} onChange={(e) => setDistrictId(e.target.value)}
-                    className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-[#006A8E]/50 focus:ring-1 focus:ring-[#006A8E]/50 transition-all placeholder:text-text-3/50 lowercase" />
-                </div>
-              )}
-
-              {view === 'login' && role === 'bank' && (
-                <div className="flex gap-4">
-                  <div className="relative flex-1">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-success pointer-events-none" size={18} />
-                    <input type="email" placeholder="Bank Official Email" value={email} onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-success/50 focus:ring-1 focus:ring-success/50 transition-all placeholder:text-text-3/50" />
-                  </div>
-                  <div className="relative shrink-0 w-32">
-                    <input type="text" placeholder="Branch Code" value={branchCode} onChange={(e) => setBranchCode(e.target.value)}
-                      className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 px-4 text-sm text-center text-text-1 focus:outline-none focus:border-success/50 focus:ring-1 focus:ring-success/50 transition-all placeholder:text-text-3/50 uppercase" />
-                  </div>
-                </div>
-              )}
-
-              {/* Standard Email for Applicant */}
-              {((view === 'login' && role === 'applicant') || view === 'register' || view === 'forgot') && (
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
-                  <input type="email" placeholder="Gmail ID / Address" value={email} onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-text-3/50" />
-                </div>
-              )}
-
-              {view !== 'forgot' && (
-                <div className={`grid ${view === 'register' ? 'grid-cols-1 sm:grid-cols-2 gap-4' : 'grid-cols-1 gap-4'}`}>
-                  <div className="relative">
-                    <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${role === 'district' ? 'text-[#006A8E]' : role === 'bank' ? 'text-success' : 'text-text-3'}`} size={18} />
-                    <input type="password" placeholder={view === 'register' ? 'Create Password' : 'Password'} value={password} onChange={(e) => setPassword(e.target.value)}
-                      className={`w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:ring-1 transition-all placeholder:text-text-3/50
-                      ${role === 'district' ? 'focus:border-[#006A8E]/50 focus:ring-[#006A8E]/50' : role === 'bank' ? 'focus:border-success/50 focus:ring-success/50' : 'focus:border-accent/50 focus:ring-accent/50'}`} />
-                  </div>
+            <form onSubmit={handleSubmit} className="animate-fade-in">
+              <div className={`${(view === 'register') ? 'max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar mb-4' : 'space-y-5'}`}>
+                <div className="space-y-5">
+                  {/* Registration Extra Fields (Only for applicants) */}
                   {view === 'register' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
+                        <input type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required
+                          className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:opacity-50 placeholder:text-text-3" />
+                      </div>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
+                        <input type="text" placeholder="Father's Name" value={fathersName} onChange={(e) => setFathersName(e.target.value)} required
+                          className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:opacity-50 placeholder:text-text-3" />
+                      </div>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
+                        <input type="tel" placeholder="Phone Number" value={phoneNo} onChange={(e) => setPhoneNo(e.target.value)} required
+                          className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:opacity-50 placeholder:text-text-3" />
+                      </div>
+                      <div className="relative">
+                        <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
+                        <input type="text" placeholder="12-Digit Aadhar Card" value={aadhar} onChange={(e) => setAadhar(e.target.value)} required maxLength={12}
+                          className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:opacity-50 placeholder:text-text-3" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic Identifiers Based on Role */}
+                  {view === 'login' && role === 'district' && (
                     <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
-                      <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full bg-bg-base/70 border border-white/10 rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-text-3/50" />
+                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-[#006A8E] pointer-events-none" size={18} />
+                      <input type="text" placeholder="District ID / Access Code" value={districtId} onChange={(e) => setDistrictId(e.target.value)}
+                        className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-[#006A8E]/50 focus:ring-1 focus:ring-[#006A8E]/50 transition-all placeholder:opacity-50 placeholder:text-text-3 lowercase" />
+                    </div>
+                  )}
+
+                  {view === 'login' && role === 'bank' && (
+                    <div className="flex gap-4">
+                      <div className="relative flex-1">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-success pointer-events-none" size={18} />
+                        <input type="email" placeholder="Bank Official Email" value={email} onChange={(e) => setEmail(e.target.value)}
+                          className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-success/50 focus:ring-1 focus:ring-success/50 transition-all placeholder:opacity-50 placeholder:text-text-3" />
+                      </div>
+                      <div className="relative shrink-0 w-32">
+                        <input type="text" placeholder="Branch Code" value={branchCode} onChange={(e) => setBranchCode(e.target.value)}
+                          className="w-full bg-bg-base border border-border-default rounded-xl h-12 px-4 text-sm text-center text-text-1 focus:outline-none focus:border-success/50 focus:ring-1 focus:ring-success/50 transition-all placeholder:opacity-50 placeholder:text-text-3 uppercase" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Standard Email for Applicant */}
+                  {((view === 'login' && role === 'applicant') || view === 'register' || view === 'forgot') && (
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
+                      <input type="email" placeholder="Gmail ID / Address" value={email} onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:opacity-50 placeholder:text-text-3" />
+                    </div>
+                  )}
+
+                  {view !== 'forgot' && (
+                    <div className={`grid ${view === 'register' ? 'grid-cols-1 sm:grid-cols-2 gap-4' : 'grid-cols-1 gap-4'}`}>
+                      <div className="relative">
+                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${role === 'district' ? 'text-[#006A8E]' : role === 'bank' ? 'text-success' : 'text-text-3'}`} size={18} />
+                        <input type="password" placeholder={view === 'register' ? 'Create Password' : 'Password'} value={password} onChange={(e) => setPassword(e.target.value)}
+                          className={`w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:ring-1 transition-all placeholder:opacity-50 placeholder:text-text-3
+                          ${role === 'district' ? 'focus:border-[#006A8E]/50 focus:ring-[#006A8E]/50' : role === 'bank' ? 'focus:border-success/50 focus:ring-success/50' : 'focus:border-accent/50 focus:ring-accent/50'}`} />
+                      </div>
+                      {view === 'register' && (
+                        <div className="relative">
+                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" size={18} />
+                          <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full bg-bg-base border border-border-default rounded-xl h-12 pl-11 pr-4 text-sm text-text-1 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:opacity-50 placeholder:text-text-3" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {view === 'login' && (
+                    <div className="flex justify-end pt-1">
+                      <button type="button" onClick={() => { setView('forgot'); clearMessages(); }} className={`text-xs font-semibold hover:underline transition-colors
+                        ${role === 'district' ? 'text-[#006A8E]' : role === 'bank' ? 'text-success' : 'text-accent hover:text-accent-hover'}`}>
+                        Forgot Password?
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Alerts */}
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs font-bold animate-fade-in">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  {successMsg && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-bold animate-fade-in">
+                      <CheckCircle2 size={14} className="shrink-0" />
+                      <span>{successMsg}</span>
                     </div>
                   )}
                 </div>
-              )}
-
-              {view === 'login' && (
-                <div className="flex justify-end pt-1">
-                  <button type="button" onClick={() => { setView('forgot'); clearMessages(); }} className={`text-xs font-semibold hover:underline transition-colors
-                    ${role === 'district' ? 'text-[#006A8E]' : role === 'bank' ? 'text-success' : 'text-accent hover:text-accent-hover'}`}>
-                    Forgot Password?
-                  </button>
-                </div>
-              )}
-
-              {/* Alerts */}
-              {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs font-bold animate-fade-in">
-                  <AlertCircle size={14} className="shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-              {successMsg && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-bold animate-fade-in">
-                  <CheckCircle2 size={14} className="shrink-0" />
-                  <span>{successMsg}</span>
-                </div>
-              )}
+              </div>
 
               {/* Submit Button */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4 border-t border-white/5 mt-2">
                 {view === 'register' && (
                   <button
                     type="button"

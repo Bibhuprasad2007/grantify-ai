@@ -83,8 +83,7 @@ const CibilScorePage = ({ onBack }) => {
            <button onClick={onBack} className="flex items-center gap-2 text-text-3 hover:text-text-1 text-sm font-bold transition-colors mb-4">
              <ArrowLeft size={16} /> Back to Application
            </button>
-           <h2 className="text-3xl font-heading font-extrabold text-white">Full <span className="text-accent">Eligibility Check</span></h2>
-           <p className="text-text-3 font-semibold mt-2">Submit your complete details to fetch an accurate CIBIL and Eligibility Score.</p>
+           <h2 className="text-3xl font-heading font-extrabold text-white">Check Your <span className="text-accent">Civil Score Then Apply</span></h2>
         </div>
       </div>
 

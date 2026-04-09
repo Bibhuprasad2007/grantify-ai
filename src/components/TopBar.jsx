@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Sun, Moon } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';
 
-const TopBar = ({ onNavigate }) => {
+const TopBar = ({ onNavigate, isDarkMode, onToggleTheme }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Navigation Links Data
@@ -32,18 +32,30 @@ const TopBar = ({ onNavigate }) => {
         ))}
       </nav>
 
-      {/* Notifications (Right) */}
-      <div className="relative flex items-center">
+      {/* Right side controls */}
+      <div className="relative flex items-center gap-2">
+        {/* Dark Mode Toggle */}
         <button 
-          onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+          onClick={onToggleTheme}
           className="w-10 h-10 rounded-full flex items-center justify-center text-text-3 hover:text-text-1 hover:bg-white/5 transition-all relative"
+          aria-label="Toggle Theme"
         >
-          <Bell size={20} />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-danger rounded-full border-2 border-bg-surface scale-pop"></span>
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
-        {isNotificationsOpen && (
-          <NotificationDropdown onClose={() => setIsNotificationsOpen(false)} />
-        )}
+
+        {/* Notifications */}
+        <div className="relative flex items-center">
+          <button 
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-text-3 hover:text-text-1 hover:bg-white/5 transition-all relative"
+          >
+            <Bell size={20} />
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-danger rounded-full border-2 border-bg-surface scale-pop"></span>
+          </button>
+          {isNotificationsOpen && (
+            <NotificationDropdown onClose={() => setIsNotificationsOpen(false)} />
+          )}
+        </div>
       </div>
     </header>
   );

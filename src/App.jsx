@@ -30,6 +30,24 @@ const App = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [selectedScholarship, setSelectedScholarship] = useState(null);
+  
+  // Theme state
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme ? savedTheme === 'dark' : true; // Default to dark
+  });
+
+  // Apply theme class to document
+  React.useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   // Loading spinner while checking auth
   if (loading) {
@@ -67,17 +85,17 @@ const App = () => {
         return (
           <Dashboard 
             onApplyLoan={() => setCurrentView('apply-loan')} 
-            onApplyScholarship={() => setCurrentView('apply-scholarship')} 
+            onApplyScholarship={() => { setSelectedScholarship(null); setCurrentView('apply-scholarship'); }} 
           />
         );
       case 'loan-offers':
         return <LoanOffersPage onApplyLoan={() => setCurrentView('apply-loan')} />;
       case 'government-aid':
-        return <GovernmentAidPage onApply={() => setCurrentView('apply-scholarship')} />;
+        return <GovernmentAidPage onApply={(scheme) => { setSelectedScholarship(scheme); setCurrentView('apply-scholarship'); }} />;
       case 'apply-loan':
         return <LoanForm onBackToDashboard={() => setCurrentView('dashboard')} onCheckCibil={() => setCurrentView('cibil-score')} />;
       case 'apply-scholarship':
-        return <ApplicationForm onBackToDashboard={() => setCurrentView('dashboard')} />;
+        return <ApplicationForm onBackToDashboard={() => setCurrentView('dashboard')} preFilledScheme={selectedScholarship} />;
       case 'cibil-score':
         return <CibilScorePage onBack={() => setCurrentView('apply-loan')} />;
       case 'ai-assistant':
@@ -87,7 +105,19 @@ const App = () => {
       case 'verified-documents':
         return <VerifiedDocuments />;
       case 'eligibility':
-        return <EligibilityPage onBack={() => setCurrentView('dashboard')} />;
+        return (
+          <EligibilityPage 
+            onBack={() => setCurrentView('dashboard')} 
+            onApply={(item) => {
+              if (item.type === 'loan') {
+                setCurrentView('apply-loan');
+              } else {
+                setSelectedScholarship(item);
+                setCurrentView('apply-scholarship');
+              }
+            }}
+          />
+        );
       case 'applications':
         return <ApplicationsPage />;
       case 'notifications':
@@ -118,7 +148,13 @@ const App = () => {
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {currentView !== 'ai-assistant' && <TopBar onNavigate={setCurrentView} />}
+        {currentView !== 'ai-assistant' && (
+          <TopBar 
+            onNavigate={setCurrentView} 
+            isDarkMode={isDarkMode} 
+            onToggleTheme={() => setIsDarkMode(!isDarkMode)} 
+          />
+        )}
         <main className={`flex-1 overflow-x-hidden custom-scrollbar ${currentView === 'ai-assistant' ? 'overflow-y-hidden p-6' : 'overflow-y-auto p-6'}`}>
           {renderContent()}
         </main>

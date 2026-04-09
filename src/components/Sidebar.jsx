@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  LayoutDashboard, Sparkles, BadgeDollarSign, Landmark, 
+  LayoutDashboard, Sparkles, IndianRupee, Landmark, 
   RefreshCw, GraduationCap, Building2, FolderOpen, 
   ClipboardList, Bell, UserCircle, ShieldCheck, 
   ChevronLeft, ChevronRight, LogOut
@@ -130,7 +130,7 @@ const Sidebar = ({ isCollapsed, toggleCollapse, onNavigate, activeView, onOpenAi
 
         <NavigationGroup title="Finances" isCollapsed={isCollapsed}>
           <SidebarItem 
-            icon={BadgeDollarSign} 
+            icon={IndianRupee} 
             label="Apply Loan" 
             isCollapsed={isCollapsed} 
             active={activeView === 'apply-loan'}

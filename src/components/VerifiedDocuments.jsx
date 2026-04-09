@@ -195,6 +195,61 @@ const VerificationResultModal = ({ result, docName, onClose, onAccept }) => {
   );
 };
 
+/* ─── Document Preview Modal ─── */
+const DocumentPreviewModal = ({ url, docName, onClose }) => {
+  if (!url) return null;
+  // Basic check for PDF
+  const isPdf = url.toLowerCase().includes('.pdf') || url.startsWith('data:application/pdf');
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+      <div className="relative bg-bg-surface border border-white/10 rounded-[2.5rem] max-w-5xl w-full h-[85vh] overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-8 py-5 border-b border-white/5 flex items-center justify-between bg-bg-elevated/30">
+          <div className="flex items-center gap-4">
+             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                <FileText size={20} />
+             </div>
+             <div>
+                <h3 className="text-lg font-bold text-text-1">{docName}</h3>
+                <p className="text-[10px] text-text-3 font-bold uppercase tracking-widest">Document Preview</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/5 text-text-3 hover:text-white transition-all">
+            <XCircle size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto bg-black/20 flex items-center justify-center p-8">
+          {isPdf ? (
+            <iframe src={url} className="w-full h-full rounded-xl border-none bg-white" title="PDF Preview" />
+          ) : (
+            <img src={url} alt={docName} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-fade-up" />
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 py-4 border-t border-white/5 bg-bg-elevated/30 flex items-center justify-between">
+           <p className="text-xs text-text-3">AI Verified Secure Document Vault</p>
+           <div className="flex gap-4">
+              <button onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-bold text-text-3 hover:text-text-1">Close</button>
+              <a 
+                href={url} 
+                download={docName.replace(/\s+/g, '_').toLowerCase()} 
+                target="_blank"
+                rel="noreferrer"
+                className="px-6 py-2.5 bg-accent text-white rounded-xl font-bold text-sm shadow-lg shadow-accent/20 hover:scale-105 transition-all flex items-center gap-2"
+              >
+                <Download size={16} /> Open Full View
+              </a>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ─────────────────────────────────────────────────────────── */
 /* Main Component                                               */
 /* ─────────────────────────────────────────────────────────── */
@@ -220,6 +275,9 @@ const VerifiedDocuments = () => {
 
   // Verified Aadhar data (used as reference for cross-checking)
   const [verifiedAadharData, setVerifiedAadharData] = useState(null);
+
+  // New: Document Preview State
+  const [selectedPreviewDoc, setSelectedPreviewDoc] = useState(null); // { url, name }
 
   const fileInputRef = useRef(null);
 
@@ -355,7 +413,14 @@ const VerifiedDocuments = () => {
         'passport_photo':  { expectedName: 'photo_003',     docName: 'Passport Size Photo' },
         'certificate_10th':{ expectedName: 'matric_004',    docName: '10th Certificate' },
         'certificate_12th':{ expectedName: '12th_005',      docName: '12th Certificate' },
-        'ration_card':     { expectedName: 'ration_oo6',    docName: 'Ration Card' },
+        'ration_card':     { expectedName: 'ration_006',    docName: 'Ration Card' },
+        'income_cert':     { expectedName: 'income_010',    docName: 'Income Certificate' },
+        'college_id':      { expectedName: 'icard_011',     docName: 'College ID Card' },
+        'last_marksheet':  { expectedName: 'mark_012',      docName: 'Last Exam Marksheet' },
+        'fee_structure':   { expectedName: 'fee_013',       docName: 'Fee Structure' },
+        'bonafide_cert':   { expectedName: 'bonafide_014',  docName: 'Bonafide Certificate' },
+        'bank_passbook':   { expectedName: 'passbook_015',  docName: 'Bank Passbook' },
+        'bank_cv':         { expectedName: 'cv_016',        docName: 'Bank CV Document' },
         'mother_aadhar':   { expectedName: 'madhar_007',    docName: "Mother's Aadhar Card" },
         'parent_pan':      { expectedName: 'fpancard_008',  docName: 'Parent PAN Card' },
         'father_aadhar':   { expectedName: 'fadhar_009',    docName: "Father's Aadhar Card" }
@@ -391,6 +456,11 @@ const VerifiedDocuments = () => {
             }).then(realUrl => {
               // Update Firestore with the real cloud URL silently
               setDoc(doc(db, `users/${user.uid}/documents`, docId), { url: realUrl }, { merge: true });
+              // CRITICAL: Update local state so it doesn't try to use the expired temp URL later
+              setDocMap(prev => ({
+                ...prev,
+                [docId]: { ...prev[docId], url: realUrl }
+              }));
             }).catch(err => console.error("Background upload failed:", err));
 
           } catch (bypassErr) {
@@ -822,6 +892,13 @@ const VerifiedDocuments = () => {
         onAccept={handleAcceptVerification}
       />
 
+      {/* NEW: Document Preview Modal */}
+      <DocumentPreviewModal
+        url={selectedPreviewDoc?.url}
+        docName={selectedPreviewDoc?.name}
+        onClose={() => setSelectedPreviewDoc(null)}
+      />
+
       {/* ─── Hero Header ─── */}
       <div className="relative bg-bg-surface/50 backdrop-blur-xl border border-border-default p-8 rounded-3xl shadow-2xl overflow-hidden">
         <div className="absolute top-0 left-0 w-80 h-80 bg-accent/5 rounded-full -translate-y-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
@@ -1140,12 +1217,20 @@ const VerifiedDocuments = () => {
                             >
                               <Trash2 size={18} />
                             </button>
+                            <button
+                              onClick={() => setSelectedPreviewDoc({ url: userDoc.url, name: docItem.name })}
+                              className="p-2.5 rounded-xl bg-white/5 border border-border-default hover:bg-accent/10 hover:border-accent/20 text-text-3 hover:text-accent transition-all flex items-center justify-center"
+                              title="Preview Document"
+                            >
+                              <Eye size={18} />
+                            </button>
                             <a
                               href={userDoc.url}
                               target="_blank"
                               rel="noreferrer"
+                              download
                               className="p-2.5 rounded-xl bg-white/5 border border-border-default hover:bg-emerald-500/10 hover:border-emerald-500/20 text-text-3 hover:text-emerald-400 transition-all flex items-center justify-center"
-                              title="View Document"
+                              title="Download Document"
                             >
                               <Download size={18} />
                             </a>
